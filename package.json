@@ -2,6 +2,14 @@
   "name": "paratrend-rubber-dashboard",
   "version": "1.0.0",
   "private": true,
-  "engines": { "node": ">=22" },
-  "scripts": { "start": "node server.js" }
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3"
+  }
 }
