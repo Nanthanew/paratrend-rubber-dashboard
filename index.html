@@ -1,0 +1,2202 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ParaTrend - ระบบวิเคราะห์และพยากรณ์แนวโน้มราคายางพารารายวัน (ข้อมูลจริง)</title>
+  <meta name="description" content="แดชบอร์ดราคายางพารารายวัน วิเคราะห์และพยากรณ์แนวโน้มด้วยโมเดลสถิติ จากข้อมูลจริงของสำนักงานเศรษฐกิจการเกษตร อัตราแลกเปลี่ยน และปริมาณฝน">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              950: '#041026', 900: '#061838', 800: '#0B2A5B', 700: '#133D7C',
+              teal: '#0D9488', teallight: '#14B8A6', emerald: '#10B981', softbg: '#F8FAFC'
+            }
+          },
+          fontFamily: { sans: ['Prompt', 'Inter', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body { font-family: 'Prompt', sans-serif; -webkit-font-smoothing: antialiased; }
+    @media (max-width: 639px) {
+      header .h-20 { height: auto; min-height: 80px; flex-wrap: wrap; gap: 12px; padding: 12px 0; }
+      #dataModePill { max-width: 170px; font-size: 9px; }
+      input, select { font-size: 16px !important; }
+      button, #pngDownloadLink { min-height: 44px; }
+      #pngPreviewModal { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+    }
+    .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 9999px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+    .pulse-ring { animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    @keyframes pulse-ring {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.15); opacity: 0.5; }
+    }
+    details > summary { list-style: none; cursor: pointer; }
+    details > summary::-webkit-details-marker { display: none; }
+  </style>
+</head>
+<body class="pin-locked min-h-full flex flex-col text-slate-800 bg-[#F4F6F9]">
+  <style>
+    body.pin-locked > :not(#pinGate):not(script):not(style) { display: none !important; }
+    #pinGate { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; background: #061838; font-family: Prompt, Tahoma, sans-serif; }
+    #pinGate[hidden] { display: none; }
+    .pin-panel { width: 100%; max-width: 360px; padding: 32px; border-radius: 24px; background: white; text-align: center; }
+    #pinInput { box-sizing: border-box; width: 100%; margin: 20px 0 12px; padding: 14px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 26px; text-align: center; letter-spacing: 12px; }
+    .pin-submit { width: 100%; padding: 14px; border: none; border-radius: 12px; background: #0d9488; color: white; font: 600 16px Prompt, Tahoma, sans-serif; cursor: pointer; }
+  </style>
+  <div id="pinGate">
+    <form id="pinForm" class="pin-panel">
+      <h1 style="margin:0;color:#0B2A5B;font-size:30px">ParaTrend</h1>
+      <p style="color:#64748b;margin:12px 0">กรอกรหัส PIN 4 หลักเพื่อเข้าใช้งาน</p>
+      <label for="pinInput" style="font-size:14px;color:#475569">รหัสเข้าแอป</label>
+      <input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required autocomplete="off" aria-describedby="pinError">
+      <button type="submit" class="pin-submit">เข้าใช้งาน</button>
+      <p id="pinError" role="alert" style="color:#be123c;font-size:14px;min-height:22px;margin:12px 0 0"></p>
+    </form>
+  </div>
+
+  <!-- Library load guard -->
+  <div id="libWarning" class="hidden bg-amber-100 border-b border-amber-300 text-amber-900 text-xs px-4 py-2.5 text-center font-medium">
+    ไม่สามารถโหลดไลบรารี (Tailwind / Chart.js) จาก CDN ได้ — กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วรีโหลดหน้านี้
+  </div>
+
+  <!-- Top App Navigation Bar -->
+  <header class="bg-brand-800 text-white shadow-lg sticky top-0 z-40 border-b border-brand-700/60">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-20">
+
+        <div class="flex items-center space-x-3.5">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-teal to-emerald-400 flex items-center justify-center shadow-md shadow-teal-950/40 shrink-0">
+            <i data-lucide="sprout" class="w-7 h-7 text-white"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-2xl font-bold tracking-tight text-white">Para<span class="text-brand-teallight">Trend</span></span>
+              <span id="dataModePill" class="bg-emerald-500/20 text-emerald-300 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-ring"></span> กำลังโหลดข้อมูล
+              </span>
+            </div>
+            <p class="text-xs text-slate-300 hidden sm:block">ราคายางจริงจากสำนักงานเศรษฐกิจการเกษตร + วิเคราะห์ด้วยโมเดลสถิติ</p>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          <div class="hidden lg:flex flex-col text-right pr-2">
+            <span id="marketStatusLabel" class="text-[11px] text-emerald-300 font-semibold flex items-center justify-end gap-1">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span> เชื่อมต่อแหล่งข้อมูล
+            </span>
+            <span id="marketTimestamp" class="text-xs text-slate-200">กำลังดึงข้อมูล...</span>
+          </div>
+
+          <button id="refreshDataBtn" title="ดึงข้อมูลล่าสุดจากแหล่งข้อมูลจริง" class="p-2.5 rounded-xl bg-brand-700 hover:bg-brand-900 text-slate-200 hover:text-white transition-all active:scale-95 border border-brand-600/50 flex items-center gap-1.5 text-xs font-medium">
+            <i data-lucide="refresh-cw" id="refreshIcon" class="w-4 h-4"></i>
+            <span class="hidden md:inline">อัปเดตข้อมูล</span>
+          </button>
+
+          <button id="openAlertModalBtn" class="flex items-center gap-2 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-medium px-3.5 py-2.5 rounded-xl shadow-md transition-all active:scale-95 text-xs sm:text-sm">
+            <i data-lucide="bell-ring" class="w-4 h-4"></i>
+            <span>ตั้งแจ้งเตือนราคา</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- 1. Daily Signal Banner -->
+    <section class="bg-gradient-to-r from-brand-900 via-brand-800 to-brand-700 text-white rounded-3xl p-5 sm:p-6 shadow-md border border-brand-700/80 relative overflow-hidden">
+      <div class="absolute -right-8 -bottom-8 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
+        <div class="space-y-2 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> สัญญาณโมเดลสถิติรายวัน
+            </span>
+            <span class="text-xs text-slate-300">คำนวณจากราคายางจริง + อัตราแลกเปลี่ยน + ปริมาณฝน</span>
+          </div>
+
+          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2 flex-wrap">
+            <span id="signalDirection">กำลังคำนวณ...</span>
+            <span id="signalDot" class="inline-block w-3 h-3 rounded-full bg-slate-400 animate-pulse"></span>
+            <span id="signalAdvice" class="text-emerald-300 font-extrabold"></span>
+          </h2>
+
+          <p id="signalReason" class="text-xs sm:text-sm text-slate-200 leading-relaxed max-w-3xl">
+            กำลังดึงข้อมูลราคาจากสำนักงานเศรษฐกิจการเกษตร...
+          </p>
+        </div>
+
+        <div class="flex md:flex-col items-center justify-between w-full md:w-auto bg-white/10 backdrop-blur-md px-5 py-3.5 rounded-2xl border border-white/15 shrink-0 text-center">
+          <span class="text-xs text-slate-300">ความเชื่อมั่นของโมเดล</span>
+          <div id="confidenceValue" class="text-3xl font-extrabold text-emerald-300 my-0.5">--</div>
+          <span id="confidenceLevel" class="text-[11px] text-emerald-200 font-medium">กำลังประเมิน</span>
+        </div>
+      </div>
+
+      <details class="relative z-10 mt-4 pt-3 border-t border-white/10">
+        <summary class="text-[11px] text-teal-200 font-semibold flex items-center gap-1">
+          <i data-lucide="sigma" class="w-3.5 h-3.5"></i> วิธีคำนวณสัญญาณและความเชื่อมั่น (กดเพื่อย่อ/ขยาย)
+        </summary>
+        <div id="modelExplain" class="mt-2 text-[11px] text-slate-300 leading-relaxed grid sm:grid-cols-2 gap-x-6 gap-y-1"></div>
+      </details>
+    </section>
+
+    <!-- 2. Price Cards -->
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+          <i data-lucide="layers" class="w-4 h-4 text-brand-teal"></i>
+          ราคาจริงล่าสุด 3 ประเภทผลผลิต (คลิกการ์ดเพื่อสลับกราฟและตัวคำนวณ)
+        </h3>
+        <span class="text-xs text-slate-400 hidden sm:inline" id="priceSourceNote">*สำนักงานเศรษฐกิจการเกษตร (สศก.)</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="rubberPriceCardsContainer"></div>
+      <div class="flex flex-wrap items-center justify-end gap-3 mt-4">
+        <span class="text-xs text-slate-500">ส่งออกรวมทั้ง 3 ประเภทในภาพเดียว • เปรียบเทียบรอบล่าสุดที่มีราคา</span>
+        <button id="exportPricePngBtn" type="button" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-800 hover:bg-brand-900 text-white text-xs font-semibold shadow-sm transition-colors">
+          <i data-lucide="image-down" class="w-4 h-4"></i> ส่งออกราคาเป็น PNG
+        </button>
+      </div>
+    </section>
+
+    <!-- 3. Leading Indicators -->
+    <section class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4">
+        <div>
+          <h3 class="text-base font-bold text-brand-800 flex items-center gap-2">
+            <i data-lucide="activity" class="w-5 h-5 text-brand-teal"></i>
+            ปัจจัยชี้นำตลาด (Leading Indicators)
+          </h3>
+          <p class="text-xs text-slate-500">อัตราแลกเปลี่ยน ปริมาณฝน ส่วนต่างราคารับซื้อ และแนวโน้มราคารายสัปดาห์ — แสดงสถานะข้อมูลสดหรือข้อมูลสำเนาแยกแต่ละตัว</p>
+        </div>
+        <span id="overallImpactPill" class="text-[11px] font-semibold text-brand-teal bg-teal-50 px-3 py-1 rounded-xl self-start sm:self-auto">
+          กำลังประเมินผลกระทบ...
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="indicatorGrid"></div>
+
+      <p class="text-[11px] text-slate-400 mt-3 flex items-start gap-1.5">
+        <i data-lucide="info" class="w-3.5 h-3.5 mt-px shrink-0"></i>
+        ค่า "ฝนสะสม" มาจากการพยากรณ์ 7 วันข้างหน้าของ Open-Meteo เฉลี่ย 4 จังหวัดใต้ (สุราษฎร์ธานี นครศรีธรรมราช สงขลา ยะลา) — โอกาสหยุดกรีดนับจากวันที่ฝนสะสม ≥ 10 มม.
+      </p>
+    </section>
+
+    <!-- 4. Chart & Milestones -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <div class="lg:col-span-8 bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80 flex flex-col justify-between">
+        <div>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h3 class="text-base font-bold text-brand-800 flex items-center gap-2">
+                <i data-lucide="line-chart" class="w-5 h-5 text-brand-teal"></i>
+                กราฟราคาจริง + พยากรณ์: <span id="chartRubberTitle" class="text-brand-teal">น้ำยางสด</span>
+              </h3>
+              <p class="text-xs text-slate-500 mt-0.5" id="chartSubtitle">ราคาจริง (เส้นทึบ) และโมเดลคาดการณ์ล่วงหน้า (เส้นประ)</p>
+            </div>
+
+            <button id="toggleConfidenceBandBtn" class="self-start sm:self-auto text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition-colors flex items-center gap-1.5">
+              <i data-lucide="eye" class="w-3.5 h-3.5 text-teal-600"></i>
+              <span id="bandToggleText">ซ่อนกรอบความผันผวน</span>
+            </button>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 mb-4 p-1.5 bg-slate-100 rounded-2xl w-fit" id="chartTabs"></div>
+        </div>
+
+        <div class="relative w-full h-72 sm:h-80 my-2">
+          <canvas id="forecastChartCanvas"></canvas>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
+          <div class="flex items-center gap-4 flex-wrap">
+            <span class="inline-flex items-center gap-1.5"><span class="w-3.5 h-1 bg-brand-800 rounded"></span> ราคาจริง</span>
+            <span class="inline-flex items-center gap-1.5 text-brand-teal font-medium"><span class="w-3.5 h-1 bg-brand-teal border-b-2 border-dotted border-brand-teal"></span> โมเดลพยากรณ์</span>
+            <span class="inline-flex items-center gap-1.5 text-slate-400"><span class="w-3.5 h-2 bg-teal-100 rounded-sm"></span> กรอบ 80% (±1.28σ)</span>
+          </div>
+          <span id="backtestNote">*กำลังคำนวณความคลาดเคลื่อนย้อนหลัง</span>
+        </div>
+      </div>
+
+      <div class="lg:col-span-4 space-y-4 flex flex-col justify-between">
+        <div class="bg-gradient-to-br from-brand-800 to-brand-950 text-white rounded-3xl p-5 shadow-sm relative overflow-hidden flex-1">
+          <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-teal-500/20 rounded-full blur-2xl"></div>
+
+          <div class="flex items-center justify-between mb-4 border-b border-brand-700/70 pb-3 relative z-10">
+            <h4 class="text-sm font-bold text-teal-300 flex items-center gap-2">
+              <i data-lucide="target" class="w-4 h-4"></i> เป้าหมายราคาล่วงหน้า
+            </h4>
+            <span id="targetHorizonBadge" class="text-[11px] px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-semibold border border-teal-500/30">7 รอบข้างหน้า</span>
+          </div>
+
+          <div id="targetRows" class="space-y-3.5 relative z-10"></div>
+
+          <div class="mt-4 p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 text-xs leading-relaxed text-slate-200 relative z-10">
+            📌 <strong>จังหวะขายที่โมเดลแนะนำ:</strong> <span id="bestWindowText">กำลังคำนวณ...</span>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-200/80">
+          <div class="flex items-center justify-between mb-2">
+            <h5 class="text-xs font-bold text-slate-700 flex items-center gap-1.5 uppercase">
+              <i data-lucide="umbrella" class="w-4 h-4 text-sky-500"></i> ปริมาณฝนและผลผลิต (ข้อมูลจริง)
+            </h5>
+            <span id="supplyPill" class="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-md">กำลังคำนวณ</span>
+          </div>
+          <p id="weatherSummary" class="text-xs text-slate-600 leading-relaxed">กำลังดึงข้อมูลฝนจาก Open-Meteo...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Profit & Timing Simulator -->
+    <section class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-6">
+        <div>
+          <h3 class="text-base font-bold text-brand-800 flex items-center gap-2">
+            <i data-lucide="calculator" class="w-5 h-5 text-brand-teal"></i>
+            เครื่องคำนวณกำไรและจังหวะเวลาขาย
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5">เปรียบเทียบ "ขายวันนี้ที่ราคาจริง" กับ "รอขายตามราคาเป้าหมายที่โมเดลคำนวณ"</p>
+        </div>
+        <span class="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-xl border border-slate-200 self-start md:self-auto font-medium">
+          คำนวณตาม % DRC ที่กรอก
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div class="lg:col-span-5 bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">1. เลือกประเภทผลผลิต</label>
+            <select id="simRubberType" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"></select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">2. ปริมาณยางที่ต้องการขาย (กิโลกรัม)</label>
+            <div class="relative">
+              <input type="number" id="simWeightInput" value="1000" min="10" step="50"
+                     class="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-300 font-bold text-brand-800 text-base focus:ring-2 focus:ring-teal-500 outline-none bg-white">
+              <span class="absolute right-4 top-3 text-xs font-bold text-slate-400">กก.</span>
+            </div>
+            <div class="flex items-center gap-1.5 mt-2">
+              <span class="text-[11px] text-slate-400">ปรับเร็ว:</span>
+              <button class="sim-preset-weight px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[11px] font-medium text-slate-600 hover:border-teal-500" data-w="500">500 กก.</button>
+              <button class="sim-preset-weight px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[11px] font-medium text-slate-600 hover:border-teal-500" data-w="1000">1,000 กก.</button>
+              <button class="sim-preset-weight px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[11px] font-medium text-slate-600 hover:border-teal-500" data-w="2500">2,500 กก.</button>
+              <button class="sim-preset-weight px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[11px] font-medium text-slate-600 hover:border-teal-500" data-w="5000">5,000 กก.</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="block text-xs font-bold text-slate-700">3. ค่าเนื้อยางแห้ง (% DRC)</label>
+              <span id="drcNoteLabel" class="text-[11px] text-teal-600 font-medium"></span>
+            </div>
+            <div class="relative">
+              <input type="number" id="simDrcInput" value="100" min="10" max="100" step="1"
+                     class="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-300 font-bold text-brand-800 text-base focus:ring-2 focus:ring-teal-500 outline-none bg-white">
+              <span class="absolute right-4 top-3 text-xs font-bold text-slate-400">%</span>
+            </div>
+            <div class="flex items-center gap-1.5 mt-2">
+              <span class="text-[11px] text-slate-400">ลัดตามประเภท:</span>
+              <button class="sim-preset-drc px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[11px] font-medium text-slate-600 hover:border-teal-500" data-drc="100">100%</button>
+              <button class="sim-preset-drc px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[11px] font-medium text-slate-600 hover:border-teal-500" data-drc="50">50% (ก้อนถ้วย)</button>
+              <button class="sim-preset-drc px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[11px] font-medium text-slate-600 hover:border-teal-500" data-drc="45">45% (ขี้ยางชื้น)</button>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">4. รอบเวลาที่โมเดลแนะนำ</label>
+            <select id="simHorizon" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"></select>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7 flex flex-col justify-between space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+            <div class="p-4 sm:p-5 rounded-2xl bg-white border-2 border-slate-200 flex flex-col justify-between">
+              <div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">ทางเลือกที่ 1</span>
+                <h5 class="text-sm font-bold text-slate-800 mt-0.5">ขายทันทีวันนี้</h5>
+                <p class="text-xs text-slate-500 mt-1" id="simPriceTodayText">-</p>
+              </div>
+              <div class="my-3">
+                <span class="text-2xl sm:text-3xl font-extrabold text-slate-700" id="simRevenueTodayVal">-</span>
+                <span class="text-sm font-bold text-slate-500">บาท</span>
+              </div>
+              <div class="text-[11px] text-slate-500 bg-slate-100 p-2.5 rounded-xl">
+                ✓ ได้รับเงินสดทันที<br>
+                ✕ ผลตอบแทนคือราคาจริงที่ประกาศวันนี้
+              </div>
+            </div>
+
+            <div id="simOptionB" class="p-4 sm:p-5 rounded-2xl bg-emerald-50/70 border-2 border-emerald-400 flex flex-col justify-between relative shadow-sm">
+              <span id="simOptionBBadge" class="absolute -top-3 right-4 bg-emerald-600 text-white text-[11px] font-bold px-3 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                <i data-lucide="check" class="w-3 h-3"></i> โมเดลแนะนำ
+              </span>
+              <div>
+                <span class="text-xs font-bold text-emerald-800 uppercase tracking-wider block">ทางเลือกที่ 2</span>
+                <h5 class="text-sm font-bold text-emerald-950 mt-0.5" id="simOptionBTitle">รอขายตามรอบโมเดล</h5>
+                <p class="text-xs text-emerald-700 mt-1" id="simPriceForecastText">-</p>
+              </div>
+              <div class="my-3">
+                <span class="text-2xl sm:text-3xl font-extrabold text-emerald-700" id="simRevenueForecastVal">-</span>
+                <span class="text-sm font-bold text-emerald-800">บาท</span>
+              </div>
+              <div id="simOptionBNote" class="text-[11px] text-emerald-900 bg-emerald-100/80 p-2.5 rounded-xl font-medium">
+                ★ ราคาเป้าหมาย ±<span id="simBandWidth">-</span> บาท (กรอบ 80%)
+              </div>
+            </div>
+          </div>
+
+          <div id="simDiffBanner" class="p-4 rounded-2xl bg-gradient-to-r from-brand-teal to-emerald-600 text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="p-2.5 rounded-xl bg-white/20 backdrop-blur-sm shrink-0">
+                <i data-lucide="coins" class="w-6 h-6 text-emerald-100"></i>
+              </div>
+              <div>
+                <span class="text-xs text-teal-100 font-medium block">ส่วนต่างคาดการณ์:</span>
+                <div class="text-xl sm:text-2xl font-extrabold text-white" id="simDiffAmountText">-</div>
+              </div>
+            </div>
+            <div class="text-left sm:text-right text-xs bg-white/10 px-3.5 py-2 rounded-xl border border-white/15">
+              <span class="text-teal-200 block text-[11px]">คำแนะนำสำหรับคุณ:</span>
+              <strong id="simAdviceSummary" class="text-white font-bold">กำลังคำนวณ...</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Local Market Board -->
+    <section class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+        <div>
+          <h3 class="text-base font-bold text-brand-800 flex items-center gap-2">
+            <i data-lucide="map-pin" class="w-5 h-5 text-brand-teal"></i>
+            กระดานราคารับซื้อจริงรายตลาด (Local Market Board)
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5" id="boardSubtitle">จุดรับซื้อที่ สศก. รายงานราคา — เปรียบเทียบกับค่าเฉลี่ย 30 วันทำการ</p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          <div class="relative w-full sm:w-64">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3"></i>
+            <input type="text" id="marketSearchInput" placeholder="ค้นหาชื่อตลาด หรือ จังหวัด..."
+                   class="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-teal-500 outline-none bg-slate-50 focus:bg-white transition-all">
+          </div>
+          <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0" id="regionFilterPills"></div>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto custom-scrollbar">
+        <table class="w-full text-left border-collapse text-xs sm:text-sm">
+          <thead>
+            <tr class="border-b border-slate-200 text-slate-500 font-bold bg-slate-50/80">
+              <th class="py-3 px-4 rounded-l-xl">จุดรับซื้อ / ตลาด</th>
+              <th class="py-3 px-3">จังหวัด & ภาค</th>
+              <th class="py-3 px-3">ผลิตภัณฑ์</th>
+              <th class="py-3 px-3 text-right">ราคาวันนี้</th>
+              <th class="py-3 px-3 text-right">เฉลี่ย 30 วัน</th>
+              <th class="py-3 px-3 text-right">ต่ำ–สูง 30 วัน</th>
+              <th class="py-3 px-4 text-center rounded-r-xl">เทียบค่าเฉลี่ย</th>
+            </tr>
+          </thead>
+          <tbody id="localBoardTableBody" class="divide-y divide-slate-100 font-medium text-slate-700"></tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
+        <span id="boardFootnote">*ราคาอาจแตกต่างตามคุณภาพ DRC จริงและค่าขนส่งของแต่ละพื้นที่</span>
+        <span id="marketTableCount" class="font-medium text-slate-600">-</span>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
+      <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+        <div><h3 class="text-base font-bold text-brand-800">พยากรณ์อากาศภาคเหนือ 17 จังหวัด</h3><p class="text-xs text-slate-500">พิกัดตัวแทนเมืองหลักของจังหวัด • พยากรณ์ฝน 7 วัน ไม่ใช่ค่าเฉลี่ยทั้งจังหวัด</p></div>
+        <select id="northProvinceSelect" aria-label="เลือกจังหวัดภาคเหนือ" class="p-3 rounded-xl border border-slate-300 text-sm"></select>
+      </div>
+      <p id="northWeatherStatus" class="text-xs text-slate-500 mb-3" role="status">กำลังโหลดพยากรณ์...</p>
+      <div id="northWeatherDays" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2"></div>
+      <p class="text-xs text-slate-500 mt-3">แหล่งข้อมูล Open-Meteo • วันที่ฝนมากไม่จำเป็นต้องหยุดกรีด ขึ้นอยู่กับช่วงเวลาที่ฝนตกและสภาพสวน</p>
+    </section>
+
+    <section class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
+      <h3 class="text-base font-bold text-brand-800 mb-2">ตลาดและจุดรวบรวมยางภาคเหนือ</h3>
+      <p class="text-xs text-slate-500 mb-4">มีหลักฐานการซื้อขายหรือรวบรวมยาง แต่ยังไม่มีฟีดราคาปัจจุบัน กรุณาติดต่อยืนยันวันรับซื้อและราคาก่อนเดินทาง</p>
+      <div class="grid sm:grid-cols-3 gap-3">
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200"><h4 class="font-bold text-sm text-brand-800">ตลาดกลางยางพาราจังหวัดเชียงราย</h4><p class="text-xs mt-2">เชียงราย • ตลาดประมูลยางผ่านระบบ TRT</p><p class="text-xs text-amber-700 my-2">ราคา: ยังไม่มีข้อมูลปัจจุบัน</p><a href="https://www.am1386.com/home/18330" target="_blank" rel="noopener noreferrer" class="text-xs text-teal-700 underline">หลักฐานการดำเนินตลาด (2566)</a></div>
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200"><h4 class="font-bold text-sm text-brand-800">สหกรณ์ยางพาราแม่ลาว–แม่กรณ์ จำกัด</h4><p class="text-xs mt-2">ต.โป่งแพร่ อ.แม่ลาว จ.เชียงราย • จุดรวบรวมยางสมาชิก</p><p class="text-xs text-amber-700 my-2">ราคา: ยังไม่มีข้อมูลปัจจุบัน</p><a href="https://chiangrai.web.cpd.go.th/news-all/activities-news/1273-4-26-6-2024.html" target="_blank" rel="noopener noreferrer" class="text-xs text-teal-700 underline">สำนักงานสหกรณ์จังหวัด (2567)</a></div>
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200"><h4 class="font-bold text-sm text-brand-800">สหกรณ์การเกษตรชาวสวนยางพะเยา จำกัด</h4><p class="text-xs mt-2">ต.เชียงแรง อ.ภูซาง จ.พะเยา • ประกาศรับซื้อยางเครป/ยางก้อนถ้วย</p><p class="text-xs text-amber-700 my-2">ราคา: ยังไม่มีข้อมูลปัจจุบัน</p><a href="https://phayao.web.cpd.go.th/news-all/activities-news/325-lngphun-thi-trwc-yeiym-tidtam-kar-danein-ngan-shkrn-karkestr-chawswn-yang-phayea-cakad.html" target="_blank" rel="noopener noreferrer" class="text-xs text-teal-700 underline">สำนักงานสหกรณ์จังหวัด (2567)</a> · <a href="https://www.facebook.com/100077456268729/posts/1071518728773326/" target="_blank" rel="noopener noreferrer" class="text-xs text-teal-700 underline">ประกาศรับซื้อ</a></div>
+      </div>
+    </section>
+
+    <!-- 7. Data Sources & Methodology -->
+    <section class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
+      <h3 class="text-base font-bold text-brand-800 flex items-center gap-2 mb-1">
+        <i data-lucide="database" class="w-5 h-5 text-brand-teal"></i> ที่มาข้อมูลและข้อจำกัด
+      </h3>
+      <p class="text-xs text-slate-500 mb-4">ข้อมูลราคายาง อัตราแลกเปลี่ยน และฝนมาจากแหล่งต่อไปนี้ โดยแสดงสถานะข้อมูลสดหรือข้อมูลสำเนา ส่วนราคาพยากรณ์คำนวณด้วยโมเดลสถิติ</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="sourceList"></div>
+      <div class="mt-4 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
+        <strong>ข้อจำกัดที่ควรทราบ:</strong> ราคายางรายวันจาก สศก. มีเฉพาะจังหวัดที่มีตลาดกลาง/โรงงานที่เข้าร่วมรายงาน (ปัจจุบัน 4 จังหวัด) ·
+        ยางก้อนถ้วยมีข้อมูล <em>รายสัปดาห์</em> เท่านั้น (ไม่มีรายวัน) ·
+        ราคาน้ำยางสดของ "ราคากลาง สศก." กับ "ราคารับซื้อรายตลาด" คนละฐานการสำรวจ จึงไม่เท่ากันโดยธรรมชาติ ·
+        ตัวเลขพยากรณ์เป็นผลจากโมเดลสถิติ (Damped Holt) ไม่ใช่การรับประกันราคา ควรใช้ประกอบการตัดสินใจเท่านั้น
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-2">
+      <div class="flex justify-center items-center gap-2 text-brand-800 font-bold">
+        <i data-lucide="sprout" class="w-4 h-4 text-brand-teal"></i> ParaTrend • ข้อมูลราคาจริงจากสำนักงานเศรษฐกิจการเกษตร
+      </div>
+      <p class="text-slate-400 max-w-2xl mx-auto">
+        โมเดลพยากรณ์รันภายในเบราว์เซอร์ (Damped Holt's linear trend + กรอบความเชื่อมั่นจากค่าเบี่ยงเบนมาตรฐานของข้อผิดพลาด) · โปรดใช้วิจารณญาณประกอบการตัดสินใจซื้อขายจริง
+      </p>
+    </div>
+  </footer>
+
+  <!-- Price Alert Modal -->
+  <div id="alertModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100" id="modalContainer">
+
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2.5">
+          <div class="p-2 rounded-2xl bg-teal-100 text-brand-teal">
+            <i data-lucide="bell" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-brand-800">ตั้งค่าแจ้งเตือนราคา</h3>
+            <p class="text-xs text-slate-400">ระบบตรวจเมื่อมีการอัปเดตข้อมูลในหน้านี้</p>
+          </div>
+        </div>
+        <button id="closeAlertModalBtn" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 py-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">เลือกประเภทผลผลิต</label>
+          <select id="modalRubberSelect" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium focus:ring-2 focus:ring-teal-500 outline-none"></select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">เงื่อนไขการแจ้งเตือน</label>
+          <select id="modalCondition" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium focus:ring-2 focus:ring-teal-500 outline-none">
+            <option value="above">เมื่อราคาจริง "แตะหรือสูงกว่า" เป้าหมาย</option>
+            <option value="below">เมื่อราคาจริง "ต่ำหรือต่ำกว่า" เป้าหมาย</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">ราคาเป้าหมาย (บาท/กก.)</label>
+          <div class="relative">
+            <input type="number" id="modalTargetPriceInput" step="0.5"
+                   class="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-300 text-base font-bold text-brand-800 focus:ring-2 focus:ring-teal-500 outline-none">
+            <span class="absolute right-4 top-3 text-xs font-bold text-slate-400">บาท</span>
+          </div>
+          <span id="modalHint" class="text-[11px] text-teal-600 mt-1 block font-medium"></span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">ช่องทางรับสัญญาณเตือน</label>
+          <div class="space-y-2 text-xs text-slate-700">
+            <label class="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer hover:border-teal-300">
+              <input type="checkbox" id="alertUseBrowser" checked class="rounded text-teal-600 focus:ring-teal-500 w-4 h-4">
+              <div>
+                <span class="font-bold text-slate-800 block">เบราว์เซอร์ Push Notification</span>
+                <span class="text-slate-400 text-[11px]" id="browserPermNote">ต้องอนุญาตการแจ้งเตือนบนอุปกรณ์นี้</span>
+              </div>
+            </label>
+            <div class="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-100/70 border border-slate-200 opacity-70">
+              <input type="checkbox" disabled class="rounded w-4 h-4">
+              <div>
+                <span class="font-bold text-slate-600 block">LINE Notify</span>
+                <span class="text-slate-500 text-[11px]">ยังใช้ไม่ได้ — ต้องมีเซิร์ฟเวอร์เบื้องหลัง (หน้านี้เป็นไฟล์ HTML ไฟล์เดียว)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="alertListWrap" class="hidden">
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">รายการที่ตั้งไว้</label>
+          <div id="alertList" class="space-y-1.5"></div>
+        </div>
+      </div>
+
+      <div class="flex gap-2.5 pt-2">
+        <button id="cancelModalBtn" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50">ปิด</button>
+        <button id="saveAlertModalBtn" class="flex-1 py-2.5 rounded-xl bg-brand-teal hover:bg-teal-700 text-white text-xs font-bold shadow-sm transition-all">บันทึกการแจ้งเตือน</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pngPreviewModal" class="hidden fixed inset-0 z-50 bg-slate-900/80 p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl p-4 max-w-lg mx-auto my-4" style="width:100%;max-width:512px;box-sizing:border-box;min-width:0;overflow-wrap:anywhere">
+      <div class="flex justify-between items-center mb-3"><h3 class="font-bold">รูปภาพสำหรับโพสต์ Facebook</h3><button id="closePngPreview" type="button" class="p-3">ปิด</button></div>
+      <img id="pngPreviewImage" alt="สรุปราคายางพารา 3 ประเภท" style="width:100%;height:auto;border-radius:12px">
+      <div class="flex flex-wrap gap-2 mt-3"><a id="pngDownloadLink" class="bg-brand-800 text-white p-3 rounded-xl text-sm">ดาวน์โหลด PNG</a><button id="sharePngButton" class="bg-teal-600 text-white p-3 rounded-xl text-sm">แชร์ / บันทึกรูปภาพ</button></div>
+      <p id="pngSaveHint" class="text-xs text-slate-600 mt-3">Android: ดาวน์โหลดหรือแชร์ภาพ • iPhone/iPad: แตะแชร์ แล้วเลือกบันทึกรูปภาพ หรือกดค้างที่ภาพ</p>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toastNotification" class="fixed bottom-6 right-6 max-w-sm bg-brand-900 text-white px-4 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 transform translate-y-28 opacity-0 transition-all duration-300 z-50 border border-brand-700/80">
+    <div id="toastIconWrapper" class="p-2 rounded-xl bg-emerald-500 text-white shrink-0">
+      <i data-lucide="check" class="w-4 h-4"></i>
+    </div>
+    <div class="text-xs">
+      <div id="toastTitle" class="font-bold text-sm text-white">บันทึกสำเร็จ</div>
+      <div id="toastMessage" class="text-slate-300 mt-0.5">-</div>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script>
+// ParaTrend live-data snapshot (offline fallback). Province keys are mapped to Thai labels in the app.
+window.PARATREND_SNAPSHOT = {
+  meta: { generatedAt: "2026-11-09T16:01+07:00", priceAsOf: "2026-11-09", fxAsOf: "Mon, 09 Nov 2026 00:02:31 +0000" },
+  daily: {
+    latex: [["2026-07-31",69,2],["2026-08-03",67.5,2],["2026-08-04",66.5,2],["2026-08-05",66.5,2],["2026-08-06",66.5,2],["2026-08-07",66.5,2],["2026-08-10",67,2],["2026-08-11",67,2],["2026-08-13",68.5,2],["2026-08-14",68.5,2],["2026-08-17",68.5,2],["2026-08-18",68.5,2],["2026-08-19",69.5,2],["2026-08-20",69.5,2],["2026-08-21",70.5,2],["2026-08-24",71,2],["2026-08-25",72,2],["2026-08-26",72,2],["2026-08-27",72.5,2],["2026-08-28",72.5,2],["2026-08-31",72.5,2],["2026-09-01",73,2],["2026-09-02",73,2],["2026-09-03",73,2],["2026-09-04",73,2],["2026-09-07",73,2],["2026-09-08",73,2],["2026-09-09",73,2],["2026-09-10",74,2],["2026-09-11",74.5,2],["2026-09-14",74.5,2],["2026-09-15",75,2],["2026-09-16",75,2],["2026-09-17",75,2],["2026-09-18",75,2],["2026-09-21",75,2],["2026-09-22",75,2],["2026-09-23",75,2],["2026-09-24",75.5,2],["2026-09-25",75.5,2],["2026-09-30",77,2],["2026-10-01",77,2],["2026-10-02",74.5,2],["2026-10-05",78,2],["2026-10-06",79,2],["2026-10-07",79.5,2],["2026-10-08",80,2],["2026-10-09",80.5,2],["2026-10-12",82,1],["2026-10-14",82.5,2],["2026-10-15",82.5,2],["2026-10-19",83,2],["2026-10-20",83,2],["2026-10-21",82,2],["2026-10-22",80,2],["2026-10-26",80,2],["2026-10-27",80,2],["2026-10-28",80,2],["2026-10-29",80,2],["2026-10-30",79,2],["2026-11-02",78,2],["2026-11-03",77.5,2],["2026-11-04",76,2],["2026-11-05",75.5,2],["2026-11-06",76.5,2],["2026-11-09",72.5,2]],
+    rss3: [["2026-07-31",81,2],["2026-08-03",81.4,4],["2026-08-04",80.99,4],["2026-08-05",81.78,5],["2026-08-06",80.94,6],["2026-08-07",80.77,5],["2026-08-10",81.49,5],["2026-08-11",80.74,4],["2026-08-13",80.41,4],["2026-08-14",79.89,3],["2026-08-17",80.42,5],["2026-08-18",80.43,5],["2026-08-19",80.51,5],["2026-08-20",80.99,5],["2026-08-21",79.09,3],["2026-08-24",80.71,6],["2026-08-25",80.45,5],["2026-08-26",79.43,3],["2026-08-27",80.01,3],["2026-08-28",79.26,4],["2026-08-31",79.93,4],["2026-09-01",80,5],["2026-09-02",80.49,3],["2026-09-03",80.6,4],["2026-09-04",80.03,3],["2026-09-07",81.3,3],["2026-09-08",80.57,5],["2026-09-09",81.31,5],["2026-09-10",81.25,5],["2026-09-11",79.63,3],["2026-09-14",81.33,3],["2026-09-15",80.79,3],["2026-09-16",80.41,5],["2026-09-17",81.3,4],["2026-09-18",79.74,4],["2026-09-21",80.91,5],["2026-09-22",80.7,3],["2026-09-23",81.14,4],["2026-09-24",81.04,4],["2026-09-25",82.14,3],["2026-09-30",81.2,4],["2026-10-01",83.07,3],["2026-10-02",81.98,4],["2026-10-05",82.92,4],["2026-10-06",82.54,4],["2026-10-07",83.44,5],["2026-10-08",83.12,4],["2026-10-09",84.28,2],["2026-10-12",85.43,3],["2026-10-14",84.45,5],["2026-10-15",84.61,4],["2026-10-19",84.68,5],["2026-10-20",84.86,4],["2026-10-21",84.44,4],["2026-10-22",83.46,3],["2026-10-26",84.6,5],["2026-10-27",84.89,6],["2026-10-28",84.98,5],["2026-10-29",84,4],["2026-10-30",84.32,2],["2026-11-02",84.3,5],["2026-11-03",82.83,4],["2026-11-04",83.11,4],["2026-11-05",82.34,5],["2026-11-06",81.37,3],["2026-11-09",81.78,4]],
+  },
+  weekly: {
+    latex: [[2567,7,1,63.73],[2567,7,2,57.3],[2567,7,3,57.35],[2567,7,4,58.16],[2567,7,5,56.28],[2567,8,1,57.84],[2567,8,2,60.79],[2567,8,3,60.97],[2567,8,4,62.48],[2567,9,1,64.64],[2567,9,2,65.27],[2567,9,3,67.41],[2567,9,4,69.23],[2567,9,5,73.44],[2567,10,1,73.91],[2567,10,2,72.67],[2567,10,3,73],[2567,10,4,67.06],[2567,11,1,60.53],[2567,11,2,62.62],[2567,11,3,62.28],[2567,11,4,62.32],[2567,12,1,64.22],[2567,12,2,67.02],[2567,12,3,68.43],[2567,12,4,63.26],[2568,1,1,58.42],[2568,1,2,59.28],[2568,1,3,63.53],[2568,1,4,61],[2568,2,1,62.26],[2568,2,2,60.75],[2568,2,3,61.34],[2568,2,4,63.26],[2568,3,1,62.32],[2568,3,2,63.6],[2568,3,3,62.47],[2568,3,4,63.25],[2568,3,5,63.41],[2568,4,1,60.57],[2568,4,3,49.91],[2568,4,4,51.57],[2568,5,1,52.39],[2568,5,2,54.79],[2568,5,3,56.89],[2568,5,4,57.09],[2568,6,1,52.77],[2568,6,2,51.6],[2568,6,3,52.69],[2568,6,4,53.28],[2568,6,5,52.24],[2568,7,1,51.67],[2568,7,2,50.37],[2568,7,3,51.06],[2568,7,4,52],[2568,8,1,50.25],[2568,8,2,50.06],[2568,8,3,50.72],[2568,8,4,50.99],[2568,9,1,51.33],[2568,9,2,51.97],[2568,9,3,52.22],[2568,9,4,52.11],[2568,9,5,50.67],[2568,10,1,49.19],[2568,10,2,49.14],[2568,10,3,49.85],[2568,10,4,50.28],[2568,11,1,51.28],[2568,11,2,50.91],[2568,11,3,51.49],[2568,11,4,51.9],[2568,12,1,49.66],[2568,12,2,49.68],[2568,12,3,50.14],[2568,12,4,50.74],[2569,1,1,50.04],[2569,1,2,50.74],[2569,1,3,50.9],[2569,1,4,52.16],[2569,2,1,53.05],[2569,2,2,54.8],[2569,2,3,56.6],[2569,2,4,59.38],[2569,3,1,61.04],[2569,3,2,62.24],[2569,3,3,64.38],[2569,3,4,68.36],[2569,3,5,72.03],[2569,4,1,74.86],[2569,4,3,69.68],[2569,4,4,70.91],[2569,5,1,73.61],[2569,5,2,77.82],[2569,5,3,77.31],[2569,5,4,76.44],[2569,6,1,77.51],[2569,6,2,79.29],[2569,6,3,80.98],[2569,6,4,79.25],[2569,6,5,72.4],[2569,7,1,72.22],[2569,7,2,74.21],[2569,7,3,73.84],[2569,7,4,71.44],[2569,8,1,70.64],[2569,8,2,70.21],[2569,8,3,69.58],[2569,8,4,71.55],[2569,8,5,72.35],[2569,9,1,73.45],[2569,9,2,73.32],[2569,9,3,73.53],[2569,9,4,74.64],[2569,10,1,76.3],[2569,10,2,78.01],[2569,10,3,80.6],[2569,10,4,77.63],[2569,11,1,78.06]],
+    rss3: [[2567,7,1,68.59],[2567,7,2,64.07],[2567,7,3,62.08],[2567,7,4,61.55],[2567,7,5,61.14],[2567,8,1,65.3],[2567,8,2,67.66],[2567,8,3,68.73],[2567,8,4,69.19],[2567,9,1,69.76],[2567,9,2,71.76],[2567,9,3,73.52],[2567,9,4,74.05],[2567,9,5,76.08],[2567,10,1,76.74],[2567,10,2,76.64],[2567,10,3,75.23],[2567,10,4,72.47],[2567,11,1,66.4],[2567,11,2,67.06],[2567,11,3,66.13],[2567,11,4,66.22],[2567,12,1,68.61],[2567,12,2,70.73],[2567,12,3,72.94],[2567,12,4,69.77],[2568,1,1,67.32],[2568,1,2,66.64],[2568,1,3,69.52],[2568,1,4,68.57],[2568,2,1,68.49],[2568,2,2,67.13],[2568,2,3,68.3],[2568,2,4,70.33],[2568,3,1,70.01],[2568,3,2,66.85],[2568,3,3,65.64],[2568,3,4,66.72],[2568,3,5,67.12],[2568,4,1,65.2],[2568,4,3,61.72],[2568,4,4,61.9],[2568,5,1,63.56],[2568,5,2,64.28],[2568,5,3,63.41],[2568,5,4,63.86],[2568,6,1,61.21],[2568,6,2,58.3],[2568,6,3,59.29],[2568,6,4,60.15],[2568,6,5,60.21],[2568,7,1,59.08],[2568,7,2,58.92],[2568,7,3,60.01],[2568,7,4,60],[2568,8,1,56.82],[2568,8,2,56.89],[2568,8,3,56.26],[2568,8,4,56.56],[2568,9,1,56.48],[2568,9,2,56.59],[2568,9,3,56.01],[2568,9,4,55.36],[2568,9,5,54.68],[2568,10,1,53.53],[2568,10,2,53.2],[2568,10,3,53.26],[2568,10,4,53.65],[2568,11,1,53.83],[2568,11,2,53.99],[2568,11,3,54.47],[2568,11,4,55.3],[2568,12,1,53.88],[2568,12,2,53.17],[2568,12,3,53.23],[2568,12,4,53.27],[2569,1,1,53.83],[2569,1,2,54.62],[2569,1,3,54.66],[2569,1,4,55.22],[2569,2,1,55.84],[2569,2,2,56.61],[2569,2,3,58.39],[2569,2,4,60.07],[2569,3,1,63.44],[2569,3,2,64.02],[2569,3,3,64.69],[2569,3,4,68.24],[2569,3,5,71.9],[2569,4,1,74.51],[2569,4,3,71.09],[2569,4,4,71.8],[2569,5,1,72.83],[2569,5,2,75.18],[2569,5,3,77.69],[2569,5,4,77.98],[2569,6,1,78.79],[2569,6,2,81.53],[2569,6,3,83.69],[2569,6,4,84.3],[2569,6,5,79.72],[2569,7,1,79.58],[2569,7,2,82.02],[2569,7,3,81.88],[2569,7,4,81.53],[2569,8,1,79.56],[2569,8,2,79.67],[2569,8,3,78.83],[2569,8,4,79.45],[2569,8,5,78.51],[2569,9,1,79.05],[2569,9,2,79.07],[2569,9,3,79.03],[2569,9,4,79.53],[2569,10,1,80.75],[2569,10,2,82.01],[2569,10,3,82.76],[2569,10,4,83.04],[2569,11,1,82.35]],
+    cup: [[2567,7,1,30.96],[2567,7,2,29.54],[2567,7,3,28.92],[2567,7,4,28.34],[2567,7,5,28.09],[2567,8,1,29.02],[2567,8,2,29.07],[2567,8,3,29.57],[2567,8,4,30.06],[2567,9,1,30.57],[2567,9,2,30.8],[2567,9,3,31.48],[2567,9,4,30.98],[2567,9,5,30.89],[2567,10,1,31.48],[2567,10,2,31.07],[2567,10,3,30.68],[2567,10,4,30.78],[2567,11,1,30.27],[2567,11,2,30.54],[2567,11,3,30.8],[2567,11,4,30.8],[2567,12,1,31.08],[2567,12,2,31.48],[2567,12,3,32.24],[2567,12,4,30.74],[2568,1,1,30.19],[2568,1,2,30.44],[2568,1,3,30.92],[2568,1,4,30.64],[2568,2,1,31.13],[2568,2,2,30.89],[2568,2,3,31.25],[2568,2,4,31.68],[2568,3,1,31.75],[2568,3,2,30.99],[2568,3,3,31.09],[2568,3,4,31.18],[2568,3,5,31.38],[2568,4,1,30.41],[2568,4,3,28.81],[2568,4,4,28.75],[2568,5,1,28.64],[2568,5,2,28.6],[2568,5,3,28.91],[2568,5,4,28.86],[2568,6,1,28.09],[2568,6,2,27.04],[2568,6,3,26.74],[2568,6,4,26.77],[2568,6,5,26.72],[2568,7,1,26.77],[2568,7,2,26.08],[2568,7,3,26.24],[2568,7,4,26.33],[2568,8,1,26.16],[2568,8,2,26.4],[2568,8,3,26.29],[2568,8,4,26.5],[2568,9,1,26.48],[2568,9,2,26.76],[2568,9,3,26.86],[2568,9,4,26.76],[2568,9,5,26.65],[2568,10,1,26.35],[2568,10,2,26.2],[2568,10,3,26.52],[2568,10,4,26.76],[2568,11,1,26.92],[2568,11,2,26.8],[2568,11,3,27.16],[2568,11,4,27.39],[2568,12,1,27.27],[2568,12,2,26.58],[2568,12,3,26.05],[2568,12,4,26.06],[2569,1,1,26.08],[2569,1,2,26.36],[2569,1,3,26.4],[2569,1,4,26.71],[2569,2,1,27.15],[2569,2,2,27.39],[2569,2,3,27.83],[2569,2,4,28.46],[2569,3,1,29.14],[2569,3,2,29.65],[2569,3,3,29.92],[2569,3,4,30.56],[2569,3,5,30.95],[2569,4,1,31.88],[2569,4,3,31.3],[2569,4,4,31.65],[2569,5,1,32.43],[2569,5,2,34],[2569,5,3,34.14],[2569,5,4,34.47],[2569,6,1,34.96],[2569,6,2,36.57],[2569,6,3,37.54],[2569,6,4,38.31],[2569,6,5,35.82],[2569,7,1,36.19],[2569,7,2,36.96],[2569,7,3,37.05],[2569,7,4,36.72],[2569,8,1,35.72],[2569,8,2,35.65],[2569,8,3,35.5],[2569,8,4,36.2],[2569,8,5,36.47],[2569,9,1,37.2],[2569,9,2,38.32],[2569,9,3,38.69],[2569,9,4,39.49],[2569,10,1,40.23],[2569,10,2,41.23],[2569,10,3,41.77],[2569,10,4,42.23],[2569,11,1,41.65]],
+  },
+  markets: [["rss3","ตลาดกลางยางพารา ระยอง","ระยอง",85.5],["rss3","ตลาดกลางยางพารา สุราษฎร์ธานี","สุราษฎร์ธานี",82.4],["rss3","ตลาดกลางยางพารา สงขลา","สงขลา",81.22],["rss3","บริษัท สุราษฎร์สัมฤทธิ์ธุรกิจ จำกัด","สุราษฎร์ธานี",78],["latex","บริษัท ไทยรับเบอร์ลาเทกซ์กรุ๊ป จำกัด","ระยอง",74],["latex","บริษัท ที.ที.ลาเท็กซ์แอนด์โปรดักส์ จำกัด","นครศรีธรรมราช",71]],
+  marketSeries: [
+    { code: "latex", market: "บริษัท ไทยรับเบอร์ลาเทกซ์กรุ๊ป จำกัด", province: "ระยอง", pts: [["2026-07-31",67],["2026-08-03",67],["2026-08-04",65],["2026-08-05",65],["2026-08-06",65],["2026-08-07",65],["2026-08-10",65],["2026-08-11",65],["2026-08-13",68],["2026-08-14",68],["2026-08-17",68],["2026-08-18",68],["2026-08-19",69],["2026-08-20",69],["2026-08-21",70],["2026-08-24",70],["2026-08-25",71],["2026-08-26",71],["2026-08-27",72],["2026-08-28",72],["2026-08-31",72],["2026-09-01",73],["2026-09-02",73],["2026-09-03",73],["2026-09-04",73],["2026-09-07",73],["2026-09-08",73],["2026-09-09",73],["2026-09-10",74],["2026-09-11",74],["2026-09-14",74],["2026-09-15",75],["2026-09-16",75],["2026-09-17",75],["2026-09-18",75],["2026-09-21",75],["2026-09-22",75],["2026-09-23",75],["2026-09-24",75],["2026-09-25",75],["2026-09-30",77],["2026-10-01",77],["2026-10-02",72],["2026-10-05",78],["2026-10-06",79],["2026-10-07",79],["2026-10-08",79],["2026-10-09",80],["2026-10-12",82],["2026-10-14",82],["2026-10-15",82],["2026-10-19",82],["2026-10-20",82],["2026-10-21",82],["2026-10-22",80],["2026-10-26",80],["2026-10-27",80],["2026-10-28",80],["2026-10-29",80],["2026-10-30",78],["2026-11-02",78],["2026-11-03",78],["2026-11-04",76],["2026-11-05",76],["2026-11-06",78],["2026-11-09",74]] },
+    { code: "latex", market: "บริษัท ที.ที.ลาเท็กซ์แอนด์โปรดักส์ จำกัด", province: "นครศรีธรรมราช", pts: [["2026-07-31",71],["2026-08-03",68],["2026-08-04",68],["2026-08-05",68],["2026-08-06",68],["2026-08-07",68],["2026-08-10",69],["2026-08-11",69],["2026-08-13",69],["2026-08-14",69],["2026-08-17",69],["2026-08-18",69],["2026-08-19",70],["2026-08-20",70],["2026-08-21",71],["2026-08-24",72],["2026-08-25",73],["2026-08-26",73],["2026-08-27",73],["2026-08-28",73],["2026-08-31",73],["2026-09-01",73],["2026-09-02",73],["2026-09-03",73],["2026-09-04",73],["2026-09-07",73],["2026-09-08",73],["2026-09-09",73],["2026-09-10",74],["2026-09-11",75],["2026-09-14",75],["2026-09-15",75],["2026-09-16",75],["2026-09-17",75],["2026-09-18",75],["2026-09-21",75],["2026-09-22",75],["2026-09-23",75],["2026-09-24",76],["2026-09-25",76],["2026-09-30",77],["2026-10-01",77],["2026-10-02",77],["2026-10-05",78],["2026-10-06",79],["2026-10-07",80],["2026-10-08",81],["2026-10-09",81],["2026-10-14",83],["2026-10-15",83],["2026-10-19",84],["2026-10-20",84],["2026-10-21",82],["2026-10-22",80],["2026-10-26",80],["2026-10-27",80],["2026-10-28",80],["2026-10-29",80],["2026-10-30",80],["2026-11-02",78],["2026-11-03",77],["2026-11-04",76],["2026-11-05",75],["2026-11-06",75],["2026-11-09",71]] },
+    { code: "rss3", market: "ตลาดกลางยางพารา นครศรีธรรมราช", province: "นครศรีธรรมราช", pts: [["2026-08-03",83.51],["2026-08-05",84.56],["2026-08-06",82.22],["2026-08-07",83.65],["2026-08-13",81.77],["2026-08-19",81.09],["2026-08-20",81],["2026-08-24",81.2],["2026-08-25",82.16],["2026-08-27",81.76],["2026-08-28",81.94],["2026-09-03",81.06],["2026-09-08",82.15],["2026-09-09",83.06],["2026-09-16",81],["2026-09-22",81.2],["2026-09-23",82.75],["2026-09-30",83.22],["2026-10-02",83.55],["2026-10-14",86.09],["2026-10-19",85.55],["2026-10-20",85.78],["2026-10-26",85.3],["2026-10-27",85.45],["2026-10-29",84.78]] },
+    { code: "rss3", market: "ตลาดกลางยางพารา ระยอง", province: "ระยอง", pts: [["2026-08-03",84.09],["2026-08-04",84.19],["2026-08-05",83.79],["2026-08-06",83.6],["2026-08-10",83.99],["2026-08-17",83.83],["2026-08-18",83.68],["2026-08-19",83.89],["2026-08-20",83.33],["2026-08-24",83.75],["2026-08-31",83.88],["2026-09-01",82.98],["2026-09-02",82.91],["2026-09-03",82.95],["2026-09-07",83.66],["2026-09-09",83.48],["2026-09-10",85.05],["2026-09-14",84.24],["2026-09-15",82.81],["2026-09-16",83.18],["2026-09-17",83.48],["2026-09-21",83.83],["2026-09-23",83.81],["2026-10-01",85.12],["2026-10-05",85.81],["2026-10-07",86.55],["2026-10-12",88],["2026-10-15",88.88],["2026-10-19",87.59],["2026-10-21",87.88],["2026-10-26",87.98],["2026-10-27",88.13],["2026-10-28",88.79],["2026-11-02",86.85],["2026-11-04",86.06],["2026-11-05",85.89],["2026-11-09",85.5]] },
+    { code: "rss3", market: "ตลาดกลางยางพารา สงขลา", province: "สงขลา", pts: [["2026-08-06",82.09],["2026-08-07",82.55],["2026-08-10",82.4],["2026-08-11",82.5],["2026-08-17",81.12],["2026-08-18",81.18],["2026-08-20",81.25],["2026-08-24",81.3],["2026-08-25",82.02],["2026-09-01",81.11],["2026-09-04",81.05],["2026-09-08",82],["2026-09-10",81.7],["2026-09-17",81.33],["2026-09-18",81.05],["2026-09-21",81.36],["2026-09-24",82.5],["2026-09-25",82.65],["2026-10-06",83.55],["2026-10-07",84.25],["2026-10-08",85.2],["2026-10-14",86.35],["2026-10-20",85.3],["2026-10-26",85.23],["2026-10-27",85.3],["2026-10-28",85.05],["2026-11-02",83.9],["2026-11-03",83.45],["2026-11-05",83.1],["2026-11-06",82.88],["2026-11-09",81.22]] },
+    { code: "rss3", market: "ตลาดกลางยางพารา สุราษฎร์ธานี", province: "สุราษฎร์ธานี", pts: [["2026-08-04",83.78],["2026-08-05",84.56],["2026-08-06",83.76],["2026-08-07",83.65],["2026-08-10",83.05],["2026-08-11",82.45],["2026-08-13",81.88],["2026-08-14",81.67],["2026-08-17",81.17],["2026-08-18",81.28],["2026-08-19",81.57],["2026-08-20",81.39],["2026-08-21",81.26],["2026-08-24",82.01],["2026-08-25",82.08],["2026-08-26",82.28],["2026-08-27",81.28],["2026-08-28",81.1],["2026-08-31",81.85],["2026-09-01",81.89],["2026-09-02",81.55],["2026-09-03",81.39],["2026-09-04",81.55],["2026-09-07",82.25],["2026-09-08",82.68],["2026-09-09",82.99],["2026-09-10",82.5],["2026-09-11",81.88],["2026-09-14",81.75],["2026-09-15",81.56],["2026-09-16",81.88],["2026-09-17",82.37],["2026-09-18",81.89],["2026-09-21",82.35],["2026-09-22",82.39],["2026-09-24",83.65],["2026-09-25",83.78],["2026-09-30",83.59],["2026-10-01",84.08],["2026-10-02",84.39],["2026-10-05",84.88],["2026-10-06",85.09],["2026-10-07",84.91],["2026-10-08",85.3],["2026-10-09",86.06],["2026-10-12",85.78],["2026-10-14",86.29],["2026-10-15",86.06],["2026-10-19",85.75],["2026-10-20",85.88],["2026-10-21",85.39],["2026-10-22",85.89],["2026-10-27",85.45],["2026-10-28",86.06],["2026-10-29",86.2],["2026-10-30",85.65],["2026-11-02",84.75],["2026-11-03",83.88],["2026-11-04",83.39],["2026-11-05",82.71],["2026-11-06",82.22],["2026-11-09",82.4]] },
+    { code: "rss3", market: "บริษัท สุราษฎร์สัมฤทธิ์ธุรกิจ จำกัด", province: "สุราษฎร์ธานี", pts: [["2026-07-31",81],["2026-08-03",79],["2026-08-04",78],["2026-08-05",78],["2026-08-06",77],["2026-08-07",77],["2026-08-10",79],["2026-08-11",79],["2026-08-13",79],["2026-08-14",79],["2026-08-17",78],["2026-08-18",78],["2026-08-19",78],["2026-08-20",78],["2026-08-21",78],["2026-08-24",78],["2026-08-25",78],["2026-08-26",78],["2026-08-27",77],["2026-08-28",77],["2026-08-31",77],["2026-09-01",77],["2026-09-02",77],["2026-09-03",77],["2026-09-04",77.5],["2026-09-07",78],["2026-09-08",78],["2026-09-09",78.5],["2026-09-10",78.5],["2026-09-11",78.5],["2026-09-14",78],["2026-09-15",78],["2026-09-16",78],["2026-09-17",78],["2026-09-18",78],["2026-09-21",78.5],["2026-09-22",78.5],["2026-09-23",79],["2026-09-24",79],["2026-09-25",80],["2026-09-30",79],["2026-10-01",80],["2026-10-02",80],["2026-10-05",81],["2026-10-06",81.5],["2026-10-07",81.5],["2026-10-08",82],["2026-10-09",82.5],["2026-10-12",82.5],["2026-10-14",82.5],["2026-10-15",82.5],["2026-10-19",82.5],["2026-10-20",82.5],["2026-10-21",82.5],["2026-10-22",82.5],["2026-10-26",82.5],["2026-10-27",83],["2026-10-28",83],["2026-10-29",83],["2026-10-30",83],["2026-11-02",83],["2026-11-03",82],["2026-11-04",81.5],["2026-11-05",80],["2026-11-06",79],["2026-11-09",78]] },
+    { code: "rss3", market: "ร้านแสงตะวัน", province: "สุราษฎร์ธานี", pts: [["2026-07-31",81],["2026-08-03",79],["2026-08-04",78],["2026-08-05",78],["2026-08-06",77],["2026-08-07",77],["2026-08-10",79],["2026-08-11",79],["2026-08-13",79],["2026-08-14",79],["2026-08-17",78],["2026-08-18",78],["2026-08-19",78],["2026-08-21",78],["2026-08-24",78],["2026-08-25",78],["2026-08-26",78],["2026-08-28",77],["2026-08-31",77],["2026-09-01",77],["2026-09-08",78],["2026-09-09",78.5],["2026-09-10",78.5],["2026-09-11",78.5],["2026-09-16",78],["2026-09-18",78],["2026-09-21",78.5],["2026-09-23",79],["2026-09-24",79],["2026-09-30",79],["2026-10-02",80],["2026-10-05",80],["2026-10-06",80],["2026-10-07",80],["2026-10-08",80],["2026-10-14",81],["2026-10-15",81],["2026-10-19",82],["2026-10-21",82],["2026-10-22",82],["2026-10-26",82],["2026-10-27",82],["2026-10-28",82],["2026-10-29",82],["2026-11-02",83],["2026-11-03",82],["2026-11-04",81.5],["2026-11-05",80]] }
+  ],
+  fxSeries: [["2026-10-19",33.555],["2026-10-20",33.65],["2026-10-21",33.575],["2026-10-22",33.745],["2026-10-23",33.745],["2026-10-26",33.805],["2026-10-27",33.77],["2026-10-28",33.775],["2026-10-29",33.755],["2026-10-30",33.73],["2026-11-02",33.76],["2026-11-03",33.755],["2026-11-04",33.64],["2026-11-05",33.44],["2026-11-06",33.55]],
+  fx: { usdthb: 33.5588 },
+  weather: { dates: ["2026-11-02","2026-11-03","2026-11-04","2026-11-05","2026-11-06","2026-11-07","2026-11-08","2026-11-09","2026-11-10","2026-11-11","2026-11-12","2026-11-13","2026-11-14","2026-11-15"], loc: [
+    { key: "SURATTHANI", precip: [3.20,7.80,8.20,8.50,6.10,2.50,3.20,4.30,11.00,5.90,22.30,19.90,8.60,12.60] },
+    { key: "NAKHON_SI", precip: [2.70,17.30,11.30,9.80,5.10,12.60,34.40,36.30,17.30,15.00,36.70,21.80,9.90,10.80] },
+    { key: "SONGKHLA", precip: [6.20,10.70,12.30,0.90,8.90,1.20,23.00,30.90,17.20,13.40,18.70,26.00,7.80,8.40] },
+    { key: "YALA", precip: [4.40,5.30,18.60,3.00,7.40,4.30,19.10,35.30,11.90,17.10,13.90,10.00,11.30,8.40] },
+    { key: "RAYONG", precip: [0.90,3.90,8.40,6.50,2.20,18.50,3.60,0.10,0.20,0.00,0.50,6.90,3.30,0.60] },
+    { key: "BUENG_KAN", precip: [6.80,0.50,0.90,9.60,12.80,0.10,0.00,0.00,0.00,1.00,6.50,0.00,0.00,0.60] },
+    { key: "CHIANG_RAI", precip: [19.60,3.00,1.20,0.40,16.10,15.40,3.60,37.70,0.30,5.70,0.10,0.00,0.00,0.00] }
+  ]
+  }
+};
+  </script>
+
+  <script>
+  /* =========================================================================
+     ParaTrend — real-data edition
+     Sources: OAE/NABC agri price API, Frankfurter (FX), Open-Meteo (rain)
+     ========================================================================= */
+
+  // ---------------------------------------------------------- CONFIG
+  const WX_POINTS = [
+    { key: 'SURATTHANI',   name: 'สุราษฎร์ธานี',    lat: 9.138,  lon: 99.357, region: 'south' },
+    { key: 'NAKHON_SI',    name: 'นครศรีธรรมราช',   lat: 8.430,  lon: 99.963, region: 'south' },
+    { key: 'SONGKHLA',     name: 'สงขลา',           lat: 7.008,  lon: 100.474, region: 'south' },
+    { key: 'YALA',         name: 'ยะลา',            lat: 6.540,  lon: 101.280, region: 'south' },
+    { key: 'RAYONG',       name: 'ระยอง',           lat: 12.681, lon: 101.280, region: 'east'  },
+    { key: 'BUENG_KAN',    name: 'บึงกาฬ',          lat: 18.100, lon: 103.650, region: 'isan'  },
+    { key: 'CHIANG_RAI',   name: 'เชียงราย',        lat: 20.100, lon: 99.900,  region: 'north' }
+  ];
+
+  // Same-origin backend routes; arbitrary external proxy URLs are not accepted.
+  const rubberMeta = { daily: null, latex: null, cup: null, rss3: null };
+  const API = {
+    daily: '/api/rubber/daily',
+    weekly: name => '/api/rubber/weekly?product=' + encodeURIComponent(
+      name === 'น้ำยางสด คละ' ? 'latex' : name === 'ยางก้อน คละ' ? 'cup' : 'rss3'),
+    fx:     (() => {
+      const end = new Date();
+      const start = new Date(Date.now() - 21 * 864e5);
+      const iso = d => d.toISOString().slice(0, 10);
+      return 'https://api.frankfurter.dev/v1/' + iso(start) + '..' + iso(end) + '?base=USD&symbols=THB';
+    })(),
+    wx:     (() => {
+      const pts = WX_POINTS;
+      return 'https://api.open-meteo.com/v1/forecast?latitude=' + pts.map(p => p.lat).join(',') +
+             '&longitude=' + pts.map(p => p.lon).join(',') +
+             '&daily=precipitation_sum&past_days=7&forecast_days=7&timezone=' + encodeURIComponent('Asia/Bangkok');
+    })()
+  };
+
+  const REGION_NAME = { south: 'ใต้', isan: 'อีสาน', east: 'ตะวันออก', north: 'เหนือ', unknown: 'อื่นๆ' };
+  const PROVINCE_REGION = {};
+  WX_POINTS.forEach(p => { PROVINCE_REGION[p.name] = p.region; });
+
+  const PRODUCTS = {
+    latex: {
+      id: 'latex', label: 'น้ำยางสด', icon: '💧', tone: 'teal',
+      basis: 'daily', drc: 100,
+      dailyName: 'น้ำยางพาราสด', weeklyName: 'น้ำยางสด คละ',
+      cardSub: 'ราคารับซื้อเฉลี่ยรายตลาด',
+      drcNote: 'มาตรฐานน้ำยางสด 100%'
+    },
+    cup: {
+      id: 'cup', label: 'ยางก้อนถ้วย', icon: '🥣', tone: 'amber',
+      basis: 'weekly', drc: 50,
+      dailyName: null, weeklyName: 'ยางก้อน คละ',
+      cardSub: 'ราคาส่งออกเฉลี่ยรายสัปดาห์',
+      drcNote: 'มาตรฐานขี้ยาง 50%'
+    },
+    rss3: {
+      id: 'rss3', label: 'ยางแผ่นดิบชั้น 3', icon: '📜', tone: 'indigo',
+      basis: 'daily', drc: 100,
+      dailyName: 'ยางพาราแผ่นดิบ ชั้น 3', weeklyName: 'ยางแผ่นดิบ ชั้น 3',
+      cardSub: 'ราคาตลาดกลาง + ผู้ประกอบการ',
+      drcNote: 'มาตรฐานยางแผ่น 100%'
+    }
+  };
+  const PRODUCT_ORDER = ['latex', 'cup', 'rss3'];
+  const FORECAST_STEPS = { daily: 7, weekly: 4 };
+
+  const TH_MONTH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+  // Deep link: ?p=latex|cup|rss3 opens with that product selected.
+  const INIT_PRODUCT = (() => {
+    try { const p = new URLSearchParams(location.search).get('p'); return PRODUCTS[p] ? p : 'latex'; }
+    catch (e) { return 'latex'; }
+  })();
+
+  // ---------------------------------------------------------- STATE
+  const STATE = {
+    ready: false,
+    current: INIT_PRODUCT,
+    showBand: true,
+    live: { prices: false, weekly: false, fx: false, wx: false },
+    errors: {},
+    products: {},                  // id -> { daily:[[date,price,n]], weekly:[[y,m,w,v]] }
+    marketRows: [],                // { code, market, province, price }
+    marketHist: {},                // "code|market" -> { province, pts:[[date,price]] }
+    fxSeries: [],                  // [[date, thb]]
+    wx: { dates: [], loc: {} },    // loc key -> [precip...]
+    asOf: { price: null, fx: null, wx: null },
+    alerts: [],
+    models: {}                     // id -> model output
+  };
+
+  PRODUCT_ORDER.forEach(id => { STATE.products[id] = { daily: [], weekly: [] }; });
+
+  // ---------------------------------------------------------- UTILITIES
+  function icons() {
+    if (window.lucide && typeof lucide.createIcons === 'function') {
+      try { lucide.createIcons(); } catch (e) { /* ignore */ }
+    }
+  }
+  function money(n, d) {
+    if (n === null || n === undefined || isNaN(n)) return '-';
+    return Number(n).toLocaleString('th-TH', { minimumFractionDigits: d === undefined ? 2 : d, maximumFractionDigits: d === undefined ? 2 : d });
+  }
+  function intFmt(n) {
+    if (n === null || n === undefined || isNaN(n)) return '-';
+    return Math.round(n).toLocaleString('th-TH');
+  }
+  function parseISO(s) { return new Date(s + 'T00:00:00'); }
+  function fmtThaiDate(s, withYear) {
+    if (!s) return '-';
+    const d = parseISO(s);
+    if (isNaN(d)) return s;
+    return d.getDate() + ' ' + TH_MONTH[d.getMonth()] + (withYear ? ' ' + (d.getFullYear() + 543) : '');
+  }
+  function fmtShort(s) {
+    const d = parseISO(s);
+    return d.getDate() + ' ' + TH_MONTH[d.getMonth()].slice(0, 4);
+  }
+  function isWeekend(s) { const w = parseISO(s).getDay(); return w === 0 || w === 6; }
+  function addDays(s, n) {
+    const d = parseISO(s); d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
+  function median(arr) {
+    const a = arr.slice().sort((x, y) => x - y);
+    if (!a.length) return null;
+    const m = Math.floor(a.length / 2);
+    return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+  }
+  function avg(arr) { return arr.length ? arr.reduce((s, x) => s + x, 0) / arr.length : null; }
+  function pct(a, b) { return b ? ((a - b) / b) * 100 : null; }
+  function escHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function sourceBadge(live, extra) {
+    if (live) return '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">● สด</span>';
+    return '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">◆ สำเนา' + (extra ? ' ' + escHtml(extra) : '') + '</span>';
+  }
+
+  // ---------------------------------------------------------- MODEL
+  // Damped Holt's linear trend with self-selected smoothing parameters.
+  // Nothing is hand-tuned: a small grid is scored by a rolling-origin backtest
+  // on the series itself, and the winner (lowest MAPE) is used for the forecast.
+  const HOLT_GRID = [
+    { alpha: 0.40, beta: 0.15, phi: 0.90 },
+    { alpha: 0.60, beta: 0.20, phi: 0.85 },
+    { alpha: 0.75, beta: 0.30, phi: 0.80 },
+    { alpha: 0.90, beta: 0.35, phi: 0.75 },
+    { alpha: 0.98, beta: 0.40, phi: 0.70 }
+  ];
+
+  function holtRun(y, prm, H) {
+    let level = y[0];
+    let slope = y.length > 1 ? y[1] - y[0] : 0;
+    for (let t = 1; t < y.length; t++) {
+      const f = level + prm.phi * slope;
+      const prev = level;
+      level = prm.alpha * y[t] + (1 - prm.alpha) * (level + prm.phi * slope);
+      slope = prm.beta * (level - prev) + (1 - prm.beta) * prm.phi * slope;
+    }
+    const forecast = [];
+    let cum = 0;
+    for (let h = 1; h <= H; h++) { cum += Math.pow(prm.phi, h); forecast.push(level + cum * slope); }
+    return { level, slope, forecast };
+  }
+
+  // Rolling-origin backtest: refit from scratch at every origin, score h = 1..maxH.
+  function backtest(y, prm, maxH, lookback) {
+    const start = Math.max(6, y.length - (lookback || 25));
+    const byH = [];
+    for (let h = 0; h < maxH; h++) byH.push([]);
+    const all = [];
+    const rel = [];
+
+    for (let o = start; o < y.length; o++) {
+      const train = y.slice(0, o);
+      if (train.length < 6) continue;
+      const m = holtRun(train, prm, maxH);
+      for (let h = 1; h <= maxH; h++) {
+        const actual = y[o + h - 1];
+        if (actual === undefined) break;
+        const e = actual - m.forecast[h - 1];
+        byH[h - 1].push(e);
+        all.push(e);
+        if (actual) rel.push((Math.abs(e) / actual) * 100);
+      }
+    }
+    if (!all.length) return null;
+
+    const rmseByH = byH.map(a => a.length ? Math.sqrt(a.reduce((s, e) => s + e * e, 0) / a.length) : null);
+    const known = rmseByH.filter(x => x !== null);
+    for (let i = 0; i < rmseByH.length; i++) if (rmseByH[i] === null) rmseByH[i] = known.length ? known[known.length - 1] : 0;
+
+    return {
+      rmseByH: rmseByH,
+      rmseAll: Math.sqrt(all.reduce((s, e) => s + e * e, 0) / all.length),
+      mape: rel.reduce((s, x) => s + x, 0) / rel.length,
+      n: all.length,
+      origins: Math.max(0, y.length - start)
+    };
+  }
+
+  function fitBest(y, H) {
+    if (!y || y.length < 8) return null;
+    const maxH = Math.min(H, 5);
+    let best = null;
+    const table = [];
+
+    HOLT_GRID.forEach(prm => {
+      const bt = backtest(y, prm, maxH);
+      if (!bt) return;
+      table.push({ prm: prm, mape: bt.mape, rmse: bt.rmseAll });
+      if (!best || bt.mape < best.bt.mape) best = { prm: prm, bt: bt };
+    });
+    if (!best) return null;
+
+    const run = holtRun(y, best.prm, H);
+    const z = 1.2816; // 80% interval
+    const bands = [];
+    for (let h = 1; h <= H; h++) {
+      const r = best.bt.rmseByH[Math.min(h, maxH) - 1];
+      const scale = h > maxH ? Math.sqrt(h / maxH) : 1;
+      const w = Math.max(0.05, z * r * scale);
+      const v = run.forecast[h - 1];
+      bands.push({ v: v, w: w, lo: v - w, hi: v + w });
+    }
+    table.sort((a, b) => a.mape - b.mape);
+
+    return {
+      level: run.level, slope: run.slope, forecast: run.forecast, bands: bands,
+      prm: best.prm, bt: best.bt, table: table, n: y.length, maxH: maxH
+    };
+  }
+
+  // Confidence rubric — every deduction is shown to the user.
+  function confidenceOf(model, staleness, granularity) {
+    const parts = [];
+    let c = 100 - model.bt.mape * 6;
+    parts.push({ k: '100 − (MAPE จากการ backtest × 6)', v: money(c, 1) });
+    parts.push({ k: 'MAPE ' + money(model.bt.mape, 2) + '% จาก ' + model.bt.origins + ' จุดเริ่มต้น (h=1…' + model.maxH + ')', v: 'RMSE ' + money(model.bt.rmseAll, 2) + ' ฿' });
+    if (staleness > 2) { c -= 10; parts.push({ k: 'ข้อมูลอายุเกิน 2 รอบ', v: '−10' }); }
+    if (model.n < 30)  { c -= 8;  parts.push({ k: 'กลุ่มตัวอย่าง < 30 จุด', v: '−8' }); }
+    if (Math.abs(model.slope) < 0.05 * model.bt.rmseAll) { c -= 6; parts.push({ k: 'แนวโน้มไม่ชัด (slope ≈ 0)', v: '−6' }); }
+    if (granularity === 'weekly') { c -= 5; parts.push({ k: 'ข้อมูลรายสัปดาห์ (ละเอียดน้อยกว่ารายวัน)', v: '−5' }); }
+    c = Math.max(30, Math.min(92, c));
+    parts.push({ k: 'สรุป (จำกัดช่วง 30–92)', v: Math.round(c) + '%' });
+    return { value: Math.round(c), parts: parts };
+  }
+
+  function buildProjectionDates(lastDate, H) {
+    const out = [];
+    let cur = lastDate;
+    let guard = 0;
+    while (out.length < H && guard < H * 5) {
+      cur = addDays(cur, 1); guard++;
+      if (!isWeekend(cur)) out.push(cur);
+    }
+    return out;
+  }
+
+  // Build the full view model for one product
+  function computeProduct(id) {
+    const P = PRODUCTS[id];
+    const data = STATE.products[id] || {};
+    let series = [];   // [{label, date, price, n}]
+
+    if (P.basis === 'daily' && data.daily && data.daily.length) {
+      series = data.daily.map(t => ({ date: t[0], price: t[1], n: t[2], label: fmtShort(t[0]) }));
+    } else if (data.weekly && data.weekly.length) {
+      series = data.weekly.map(t => ({ date: null, ym: t[0] + '/' + t[1] + '/' + t[2], price: t[3], n: 1, label: 'สัปดาห์ ' + t[2] + '/' + TH_MONTH[t[1] - 1].slice(0, 3) + String(t[0]).slice(-2) }));
+    }
+    if (series.length < 6) return null;
+
+    const H = FORECAST_STEPS[P.basis] || 7;
+    const fitWindow = series.slice(-60).map(s => s.price);
+    const model = fitBest(fitWindow, H);
+    if (!model) return null;
+
+    const last = series[series.length - 1];
+    const prev = series.length > 1 ? series[series.length - 2] : last;
+
+    const band = model.bands;
+
+    let projDates = [];
+    if (P.basis === 'daily') {
+      projDates = buildProjectionDates(last.date, H);
+    } else {
+      projDates = model.forecast.map((_, i) => 'สัปดาห์ +' + (i + 1));
+    }
+
+    // best selling point
+    let bestIdx = 0;
+    band.forEach((b, i) => { if (b.v > band[bestIdx].v) bestIdx = i; });
+
+    // staleness = number of missing sessions before today (daily only)
+    let staleness = 0;
+    if (P.basis === 'daily') {
+      let cur = last.date, guard = 0;
+      const todayISO = new Date().toISOString().slice(0, 10);
+      while (cur < todayISO && guard < 30) { cur = addDays(cur, 1); if (!isWeekend(cur)) staleness++; guard++; }
+    }
+
+    const conf = confidenceOf(model, staleness, P.basis);
+    const changeAbs = last.price - prev.price;
+    const changePct = pct(last.price, prev.price);
+    const target = h => band[Math.min(h, band.length) - 1] ? band[Math.min(h, band.length) - 1].v : null;
+
+    return {
+      id: id, product: P, series: series, model: model, band: band, H: H,
+      projDates: projDates, last: last, prev: prev,
+      current: last.price, changeAbs: changeAbs, changePct: changePct,
+      bestIdx: bestIdx, staleness: staleness, conf: conf,
+      target3: target(3), target5: target(5), target7: target(H)
+    };
+  }
+
+  function recomputeAll() {
+    STATE.models = {};
+    PRODUCT_ORDER.forEach(id => {
+      const m = computeProduct(id);
+      if (m) STATE.models[id] = m;
+    });
+    if (!STATE.models[STATE.current]) {
+      const first = PRODUCT_ORDER.find(x => STATE.models[x]);
+      STATE.current = first || 'latex';
+    }
+  }
+
+  // ---------------------------------------------------------- FETCH / INGEST
+  async function jget(url, ms) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms || 15000);
+    try {
+      const r = await fetch(url, { signal: ctrl.signal, headers: { Accept: 'application/json' } });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.json();
+    } finally { clearTimeout(timer); }
+  }
+
+  function productCodeFromDailyName(name) {
+    for (const id of PRODUCT_ORDER) {
+      if (PRODUCTS[id].dailyName && PRODUCTS[id].dailyName === name) return id;
+    }
+    return null;
+  }
+
+  function ingestDaily(rows) {
+    const byProductDate = {};   // code -> date -> [prices]
+    const hist = {};            // "code|market" -> {province, pts}
+    const dateSet = {};
+
+    rows.forEach(r => {
+      const code = productCodeFromDailyName(r.product_name);
+      if (!code) return;
+      const price = Number(r.day_price);
+      if (!isFinite(price) || price <= 0) return;
+
+      (byProductDate[code] = byProductDate[code] || {});
+      (byProductDate[code][r.data_date] = byProductDate[code][r.data_date] || []).push(price);
+      dateSet[r.data_date] = 1;
+
+      const key = code + '|' + r.market_name;
+      if (!hist[key]) hist[key] = { code: code, market: r.market_name, province: r.province, pts: [] };
+      hist[key].pts.push([r.data_date, price]);
+    });
+
+    const dates = Object.keys(dateSet).sort();
+    let latest = null;
+    PRODUCT_ORDER.forEach(id => {
+      const map = byProductDate[id] || {};
+      STATE.products[id].daily = dates.filter(d => map[d]).map(d => {
+        const v = median(map[d]);
+        return [d, Math.round(v * 100) / 100, map[d].length];
+      });
+      if (STATE.products[id].daily.length) latest = STATE.products[id].daily[STATE.products[id].daily.length - 1][0];
+    });
+
+    Object.keys(hist).forEach(k => {
+      hist[k].pts.sort((a, b) => a[0] < b[0] ? -1 : 1);
+      STATE.marketHist[k] = hist[k];
+    });
+
+    // latest-date market rows
+    if (latest) {
+      STATE.marketRows = [];
+      Object.keys(STATE.marketHist).forEach(k => {
+        const h = STATE.marketHist[k];
+        const lastPt = h.pts[h.pts.length - 1];
+        if (lastPt && lastPt[0] === latest) {
+          STATE.marketRows.push({ code: h.code, market: h.market, province: h.province, price: lastPt[1] });
+        }
+      });
+      STATE.asOf.price = latest;
+    }
+    return !!latest;
+  }
+
+  function ingestWeekly(id, rows) {
+    if (!rows || !rows.length) return false;
+    const arr = rows.map(r => [Number(r.year_th), Number(r.month), Number(r.week), Number(r.value)])
+                    .filter(r => r.every(v => isFinite(v)))
+                    .sort((a, b) => (a[0] * 10000 + a[1] * 100 + a[2]) - (b[0] * 10000 + b[1] * 100 + b[2]));
+    STATE.products[id].weekly = arr;
+    return arr.length > 0;
+  }
+
+  function ingestFx(json) {
+    if (!json || !json.rates) return false;
+    STATE.fxSeries = Object.keys(json.rates).sort().map(d => [d, Number(json.rates[d].THB)]);
+    if (STATE.fxSeries.length) STATE.asOf.fx = STATE.fxSeries[STATE.fxSeries.length - 1][0];
+    return STATE.fxSeries.length > 0;
+  }
+
+  function ingestWx(arr) {
+    if (!Array.isArray(arr) || !arr.length) return false;
+    STATE.wx.dates = arr[0].daily.time;
+    STATE.wx.loc = {};
+    arr.forEach((o, i) => { if (WX_POINTS[i]) STATE.wx.loc[WX_POINTS[i].key] = o.daily.precipitation_sum; });
+    STATE.asOf.wx = STATE.wx.dates[0];
+    return true;
+  }
+
+  // Load from the embedded snapshot if a live source failed
+  function useSnapshot() {
+    const S = window.PARATREND_SNAPSHOT;
+    if (!S) return;
+    if (!STATE.products.latex.daily.length && S.daily) {
+      PRODUCT_ORDER.forEach(id => {
+        if (S.daily[id] && !STATE.products[id].daily.length) STATE.products[id].daily = S.daily[id];
+      });
+    }
+    PRODUCT_ORDER.forEach(id => {
+      if (!STATE.products[id].weekly.length && S.weekly && S.weekly[id]) STATE.products[id].weekly = S.weekly[id];
+    });
+    if ((!STATE.marketRows || !STATE.marketRows.length) && S.markets) {
+      STATE.marketRows = S.markets.map(m => ({ code: m[0], market: m[1], province: m[2], price: m[3] }));
+      if (!STATE.asOf.price && S.meta) STATE.asOf.price = S.meta.priceAsOf;
+    }
+    if ((!STATE.marketHist || !Object.keys(STATE.marketHist).length) && S.marketSeries) {
+      S.marketSeries.forEach(ms => {
+        STATE.marketHist[ms.code + '|' + ms.market] = { code: ms.code, market: ms.market, province: ms.province, pts: ms.pts };
+      });
+    }
+    if (!STATE.fxSeries.length && S.fxSeries) { STATE.fxSeries = S.fxSeries; STATE.asOf.fx = S.fxSeries[S.fxSeries.length - 1][0]; }
+    if ((!STATE.wx.dates || !STATE.wx.dates.length) && S.weather) {
+      STATE.wx.dates = S.weather.dates;
+      STATE.wx.loc = {};
+      S.weather.loc.forEach(o => { STATE.wx.loc[o.key] = o.precip; });
+    }
+    STATE.snapshotAt = S.meta ? S.meta.generatedAt : null;
+  }
+
+  async function loadAll(isRefresh) {
+    const btn = document.getElementById('refreshDataBtn');
+    const icon = document.getElementById('refreshIcon');
+    if (btn) btn.disabled = true;
+    if (icon) icon.classList.add('animate-spin');
+
+    STATE.errors = {};
+    const res = await Promise.allSettled([
+      jget(API.daily, 25000),
+      jget(API.weekly(PRODUCTS.latex.weeklyName), 15000),
+      jget(API.weekly(PRODUCTS.cup.weeklyName), 15000),
+      jget(API.weekly(PRODUCTS.rss3.weeklyName), 15000),
+      jget(API.fx, 12000),
+      jget(API.wx, 12000)
+    ]);
+
+    const mark = (i, ok, err) => { if (!ok) STATE.errors[i] = String(err || 'failed'); return ok; };
+
+    const fresh = meta => !!meta && ['live', 'cache'].includes(meta.status);
+    rubberMeta.daily = null;
+    try {
+      if (res[0].status !== 'fulfilled') throw Error('ดึงราคารายวันไม่สำเร็จ');
+      const incoming = res[0].value;
+      if (STATE.asOf.price && incoming.meta && incoming.meta.priceAsOf < STATE.asOf.price) {
+        rubberMeta.daily = { status: 'stale', priceAsOf: STATE.asOf.price, fetchedAt: null, warning: 'ข้อมูลสำรองเก่ากว่าราคาในหน้านี้ จึงคงราคาที่ใหม่กว่าไว้' };
+      } else {
+        if (!ingestDaily(incoming.data || [])) throw Error('ไม่มีราคารายวัน');
+        rubberMeta.daily = incoming.meta || null;
+      }
+    } catch (error) { mark('prices', false, error.message); }
+    STATE.live.prices = fresh(rubberMeta.daily);
+    if (rubberMeta.daily && !STATE.live.prices) STATE.errors.prices = rubberMeta.daily.warning;
+
+    ['latex', 'cup', 'rss3'].forEach((id, i) => {
+      rubberMeta[id] = null;
+      try {
+        const response = res[i + 1];
+        if (response.status === 'fulfilled') {
+          const old = STATE.products[id].weekly.at(-1);
+          const rank = parts => Number(parts[0]) * 10000 + Number(parts[1]) * 100 + Number(parts[2]);
+          const meta = response.value.meta;
+          if (old && meta && rank(meta.priceAsOf.split('/')) < rank(old)) {
+            rubberMeta[id] = { status: 'stale', priceAsOf: old.slice(0, 3).join('/'), fetchedAt: null, warning: 'คงข้อมูลเดิมที่ใหม่กว่าสำเนาบนเซิร์ฟเวอร์' };
+          } else if (ingestWeekly(id, response.value.data)) rubberMeta[id] = meta || null;
+        }
+      } catch (error) { STATE.errors[id] = error.message; }
+    });
+    STATE.live.weekly = ['latex', 'cup', 'rss3'].every(id => fresh(rubberMeta[id]));
+    if (!STATE.live.weekly) STATE.errors.weekly = 'บางผลิตภัณฑ์ใช้ข้อมูลสำรองหรือโหลดไม่สำเร็จ';
+
+    try { STATE.live.fx = res[4].status === 'fulfilled' && ingestFx(res[4].value); } catch (e) { STATE.live.fx = false; }
+    if (!STATE.live.fx) STATE.errors.fx = (res[4].reason || 'fx unavailable');
+
+    try { STATE.live.wx = res[5].status === 'fulfilled' && ingestWx(res[5].value); } catch (e) { STATE.live.wx = false; }
+    if (!STATE.live.wx) STATE.errors.wx = (res[5].reason || 'weather unavailable');
+
+    useSnapshot();
+    recomputeAll();
+    renderAll();
+
+    if (icon) icon.classList.remove('animate-spin');
+    if (btn) btn.disabled = false;
+
+    if (isRefresh) {
+      const ok = ['prices', 'weekly', 'fx', 'wx'].filter(k => STATE.live[k]).length;
+      const using = STATE.snapshotAt ? ' (ส่วนที่ไม่สำเร็จใช้ข้อมูลสำเนา)' : '';
+      if (ok === 4) triggerToast('อัปเดตสำเร็จ', 'ดึงข้อมูลครบทั้ง 4 แหล่งแล้ว', true);
+      else if (ok > 0) triggerToast('อัปเดตบางส่วน', 'สำเร็จ ' + ok + '/4 แหล่ง' + using, false);
+      else triggerToast('อัปเดตไม่สำเร็จ', 'ใช้ข้อมูลสำเนาที่ฝังไว้ในไฟล์แล้ว', false);
+      checkAlerts();
+    }
+  }
+
+  // ---------------------------------------------------------- INDICATORS
+  function indicatorModel() {
+    const out = {};
+
+    // FX
+    if (STATE.fxSeries.length) {
+      const last = STATE.fxSeries[STATE.fxSeries.length - 1];
+      const back = STATE.fxSeries[Math.max(0, STATE.fxSeries.length - 6)];
+      out.fx = { value: last[1], date: last[0], delta: last[1] - back[1], deltaPct: pct(last[1], back[1]) };
+    }
+
+    // Rain (4 southern provinces average over next 7 forecast days)
+    const southKeys = WX_POINTS.filter(p => p.region === 'south').map(p => p.key);
+    if (STATE.wx.dates && STATE.wx.dates.length) {
+      const todayIdx = STATE.wx.dates.length >= 15 ? -1 : 7; // open-meteo: 7 past + 1 today + 6 future
+      const futureDates = STATE.wx.dates.slice(7);
+      const perDay = futureDates.map((d, i) => {
+        const vals = southKeys.map(k => (STATE.wx.loc[k] || [])[7 + i]).filter(v => typeof v === 'number');
+        return { date: d, mm: avg(vals) || 0 };
+      });
+      const total = perDay.reduce((s, x) => s + x.mm, 0);
+      const stopDays = perDay.filter(x => x.mm >= 10).length;
+      out.rain = { perDay: perDay, total: total, avgPerDay: avg(perDay.map(x => x.mm)), stopDays: stopDays, nDays: perDay.length };
+    }
+
+    // Market spread for current product
+    const rows = STATE.marketRows.filter(r => r.code === STATE.current);
+    if (rows.length >= 2) {
+      const prices = rows.map(r => r.price);
+      const best = rows.reduce((a, b) => b.price > a.price ? b : a, rows[0]);
+      out.spread = { min: Math.min.apply(null, prices), max: Math.max.apply(null, prices), n: rows.length, best: best };
+    }
+
+    // Weekly trend for current product
+    const wk = STATE.products[STATE.current] && STATE.products[STATE.current].weekly;
+    if (wk && wk.length >= 2) {
+      const a = wk[wk.length - 1], b = wk[wk.length - 2];
+      out.weekly = { value: a[3], prev: b[3], delta: a[3] - b[3], deltaPct: pct(a[3], b[3]), ym: a[0] + '/' + a[1] + '/' + a[2] };
+    }
+    return out;
+  }
+
+  function renderIndicators() {
+    const m = indicatorModel();
+    const P = PRODUCTS[STATE.current];
+    let pos = 0, neg = 0;
+
+    const cards = [];
+
+    // 1) FX
+    if (m.fx) {
+      const soft = m.fx.delta >= 0;      // more THB per USD = baht weaker = export-friendly
+      if (soft) pos++; else neg++;
+      cards.push(indCard({
+        title: 'อัตราแลกเปลี่ยน USD/THB', icon: 'banknote', tone: 'indigo',
+        value: money(m.fx.value, 2), unit: 'บาท/ดอลลาร์',
+        delta: (m.fx.delta >= 0 ? '+' : '') + money(m.fx.delta, 3) + ' (' + money(m.fx.deltaPct, 2) + '%)',
+        good: soft, note: soft ? 'บาทอ่อนค่า → บวกต่อราคาส่งออก' : 'บาทแข็งค่า → กดดันราคาส่งออก',
+        badge: sourceBadge(STATE.live.fx), sub: 'ย้อนหลัง 5 วันทำการ • ' + fmtThaiDate(m.fx.date, true)
+      }));
+    } else {
+      cards.push(indCard({ title: 'อัตราแลกเปลี่ยน USD/THB', icon: 'banknote', tone: 'indigo', value: '-', unit: '', note: 'ไม่สามารถเข้าถึงแหล่งข้อมูลได้', badge: '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">✕ ผิดพลาด</span>', sub: '' }));
+    }
+
+    // 2) Rain
+    if (m.rain) {
+      const tight = m.rain.stopDays >= 2;
+      if (tight) pos++; else neg++;
+      cards.push(indCard({
+        title: 'ฝนสะสม 7 วันข้างหน้า (ภาคใต้)', icon: 'cloud-rain', tone: 'sky',
+        value: money(m.rain.avgPerDay, 1), unit: 'มม./วัน',
+        delta: m.rain.stopDays + ' วัน ฝน ≥10 มม.',
+        good: tight,
+        note: tight ? 'กรีดยางได้ยาก → ผลผลิตลด → ดันราคา' : 'ฝนน้อย กรีดยางได้ตามปกติ',
+        badge: sourceBadge(STATE.live.wx), sub: 'รวม ' + money(m.rain.total, 0) + ' มม. จาก 4 จังหวัด'
+      }));
+    }
+
+    // 3) Market spread
+    if (m.spread) {
+      const diff = m.spread.max - m.spread.min;
+      cards.push(indCard({
+        title: 'ส่วนต่างราคาระหว่างจุดรับซื้อ', icon: 'scale', tone: 'teal',
+        value: money(diff, 2), unit: 'บาท/กก.',
+        delta: money(m.spread.min, 2) + ' – ' + money(m.spread.max, 2),
+        good: null,
+        note: 'ขายที่ ' + m.spread.best.market + (' (จังหวัด' + m.spread.best.province + ')') ,
+        badge: sourceBadge(STATE.live.prices), sub: 'จาก ' + m.spread.n + ' จุดรับซื้อ • ' + P.label
+      }));
+    }
+
+    // 4) Weekly trend
+    if (m.weekly) {
+      const up = m.weekly.delta >= 0;
+      if (up) pos++; else neg++;
+      cards.push(indCard({
+        title: 'แนวโน้มราคาสัปดาห์ (สศก.)', icon: 'bar-chart-3', tone: 'emerald',
+        value: money(m.weekly.value, 2), unit: 'บาท/กก.',
+        delta: (up ? '+' : '') + money(m.weekly.delta, 2) + ' (' + money(m.weekly.deltaPct, 2) + '%)',
+        good: up,
+        note: (up ? 'ราคาเฉลี่ยทั้งประเทศยังไต่ขึ้น ' : 'ราคาเฉลี่ยทั้งประเทศเริ่มย่อตัว ') +
+              '(คนละฐานกับราคารับซื้อรายตลาดด้านล่าง)',
+        badge: sourceBadge(STATE.live.weekly), sub: P.label + ' • ปี ' + m.weekly.ym + ' (พ.ศ./เดือน/สัปดาห์)'
+      }));
+    }
+
+    document.getElementById('indicatorGrid').innerHTML = cards.join('');
+
+    const pill = document.getElementById('overallImpactPill');
+    let text, cls;
+    if (pos > neg + 1) { text = 'ผลกระทบโดยรวม: เป็นบวก 🟢'; cls = 'text-brand-teal bg-teal-50'; }
+    else if (neg > pos + 1) { text = 'ผลกระทบโดยรวม: เป็นลบ 🔻'; cls = 'text-rose-700 bg-rose-50'; }
+    else { text = 'ผลกระทบโดยรวม: ผสมผสาน ⚖️'; cls = 'text-amber-700 bg-amber-50'; }
+    pill.textContent = text + ' (' + pos + ' บวก / ' + neg + ' ลบ)';
+    pill.className = 'text-[11px] font-semibold px-3 py-1 rounded-xl self-start sm:self-auto ' + cls;
+
+    icons();
+  }
+
+  function indCard(o) {
+    const deltaColor = o.good === null ? 'text-slate-600' : (o.good ? 'text-emerald-600' : 'text-rose-600');
+    return '' +
+      '<div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-teal-200 transition-colors">' +
+        '<div class="flex items-center justify-between text-xs text-slate-500 font-medium mb-1 gap-2">' +
+          '<span class="truncate">' + escHtml(o.title) + '</span>' +
+          '<i data-lucide="' + o.icon + '" class="w-4 h-4 text-' + o.tone + '-500 shrink-0"></i>' +
+        '</div>' +
+        '<div class="text-xl font-bold text-slate-900">' + o.value + ' <span class="text-xs font-normal text-slate-500">' + (o.unit || '') + '</span></div>' +
+        '<div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 text-xs gap-2">' +
+          '<span class="' + deltaColor + ' font-bold flex items-center gap-0.5 min-w-0"><span class="truncate">' + (o.delta || '') + '</span></span>' +
+          '<span class="text-slate-600 text-[11px] shrink-0">' + (o.badge || '') + '</span>' +
+        '</div>' +
+        (o.note ? '<div class="text-[11px] text-slate-600 mt-1.5 leading-snug">' + escHtml(o.note) + '</div>' : '') +
+        (o.sub ? '<div class="text-[10px] text-slate-400 mt-0.5">' + escHtml(o.sub) + '</div>' : '') +
+      '</div>';
+  }
+
+  // ---------------------------------------------------------- RENDER: banner
+  function renderBanner() {
+    const M = STATE.models[STATE.current];
+    const dir = document.getElementById('signalDirection');
+    const dot = document.getElementById('signalDot');
+    const adv = document.getElementById('signalAdvice');
+    const reason = document.getElementById('signalReason');
+
+    if (!M) {
+      dir.textContent = 'ยังไม่มีข้อมูลเพียงพอ';
+      adv.textContent = '';
+      reason.textContent = 'ไม่สามารถคำนวณสัญญาณได้ — กรุณากด "อัปเดตข้อมูล" หรือตรวจสอบการเชื่อมต่อ';
+      return;
+    }
+
+    const h = M.bestIdx + 1;
+    const tgt = M.band[M.bestIdx].v;
+    const diffPct = pct(tgt, M.current);
+
+    let d, color, advice, advColor;
+    if (diffPct > 1.0) {
+      d = 'แนวโน้มขาขึ้น'; color = 'bg-emerald-400'; advice = '🟢 แนะนำชะลอขายเพื่อรอราคา'; advColor = 'text-emerald-300';
+    } else if (diffPct < -1.0) {
+      d = 'แนวโน้มขาลง'; color = 'bg-rose-400'; advice = '🔴 ไม่ควรถือสต็อก — ทยอยขาย'; advColor = 'text-rose-300';
+    } else {
+      d = 'แนวโน้มทรงตัว'; color = 'bg-amber-400'; advice = '🟡 แบ่งขายตามรอบปกติ'; advColor = 'text-amber-300';
+    }
+
+    dir.textContent = d;
+    dot.className = 'inline-block w-3 h-3 rounded-full animate-pulse ' + color;
+    adv.textContent = advice;
+    adv.className = advColor + ' font-extrabold';
+
+    const P = M.product;
+    const priceUnit = P.basis === 'daily' ? 'รอบวันทำการ' : 'รอบสัปดาห์';
+    const fx = indicatorModel();
+    const bits = [];
+    bits.push(P.label + ' วันนี้ ' + money(M.current, 2) + ' บาท (' + (M.changeAbs >= 0 ? '+' : '') + money(M.changeAbs, 2) + ', ' + (M.changePct >= 0 ? '+' : '') + money(M.changePct, 2) + '% เทียบ' + priceUnit + 'ก่อน)');
+    bits.push('โมเดลมอง ' + h + ' ' + priceUnit + 'ข้างหน้า ที่ ' + money(tgt, 2) + ' บาท (±' + money(M.band[M.bestIdx].w, 2) + ')');
+    if (fx.fx) bits.push('บาท' + (fx.fx.delta >= 0 ? 'อ่อน' : 'แข็ง') + 'ค่า ' + money(Math.abs(fx.fx.delta), 3) + ' บาท/ดอลลาร์ ใน 5 วันทำการ');
+    if (fx.rain) bits.push('ฝนใต้ 7 วันข้างหน้าเฉลี่ย ' + money(fx.rain.avgPerDay, 1) + ' มม./วัน (' + fx.rain.stopDays + ' วันหนักพอให้หยุดกรีด)');
+    reason.textContent = bits.join(' · ');
+
+    const c = M.conf;
+    document.getElementById('confidenceValue').textContent = c.value + '%';
+    const lvl = c.value >= 75 ? 'ความเชื่อมั่นสูง' : (c.value >= 55 ? 'ความเชื่อมั่นปานกลาง' : 'ความเชื่อมั่นต่ำ — ควรใช้ควบคู่กับราคาหน้าตลาด');
+    document.getElementById('confidenceLevel').textContent = lvl;
+
+    const unit = P.basis === 'daily' ? 'วันทำการ' : 'สัปดาห์';
+    const row = (k, v, hl) =>
+      '<div class="flex justify-between gap-3' + (hl ? ' text-teal-200' : '') + '">' +
+        '<span class="text-slate-400">' + escHtml(k) + '</span><span class="font-semibold">' + v + '</span></div>';
+
+    const tbl = M.model.table.map(t => {
+      const win = t.prm === M.model.prm;
+      return row('α=' + t.prm.alpha + ' β=' + t.prm.beta + ' φ=' + t.prm.phi + (win ? ' ◀ ใช้ตัวนี้' : ''),
+                 money(t.mape, 2) + '%', win);
+    }).join('');
+
+    document.getElementById('modelExplain').innerHTML =
+      c.parts.map(p => row(p.k, escHtml(p.v))).join('') +
+      row('จำนวนข้อมูลที่ใช้', M.model.n + ' ' + unit) +
+      row('ระดับฐาน (level) ที่โมเดลเห็น', money(M.model.level, 2) + ' บาท (ราคาจริงล่าสุด ' + money(M.current, 2) + ')') +
+      row('ความชันเฉลี่ยต่อ' + unit, (M.model.slope >= 0 ? '+' : '') + money(M.model.slope, 3) + ' บาท') +
+      row('กรอบความเชื่อมั่น', '±1.28 × RMSE รายรอบ (80%)') +
+      '<div class="sm:col-span-2 mt-1 pt-2 border-t border-white/10 text-teal-200 font-semibold">ผลการ backtest ทุกชุดพารามิเตอร์ (ยิ่งน้อยยิ่งแม่น)</div>' +
+      tbl;
+  }
+
+  // ---------------------------------------------------------- RENDER: price cards
+  function renderPriceCards() {
+    const wrap = document.getElementById('rubberPriceCardsContainer');
+    wrap.innerHTML = PRODUCT_ORDER.map(id => {
+      const P = PRODUCTS[id];
+      const M = STATE.models[id];
+      const active = id === STATE.current;
+      const toneBg = { teal: 'bg-teal-50 text-teal-700', amber: 'bg-amber-50 text-amber-700', indigo: 'bg-indigo-50 text-indigo-700' }[P.tone];
+
+      if (!M) {
+        return '<div data-type="' + id + '" class="rubber-select-card cursor-pointer bg-white rounded-3xl p-5 shadow-sm border-2 border-slate-200 transition-all">' +
+          '<h4 class="font-bold text-base text-brand-800">' + P.icon + ' ' + P.label + '</h4>' +
+          '<p class="text-xs text-slate-400 mt-3">ยังไม่มีข้อมูล — กด "อัปเดตข้อมูล"</p></div>';
+      }
+
+      const up = M.changeAbs >= 0;
+      const tgtTxt = M.product.basis === 'daily' ? 'คาดการณ์อีก 5 วันทำการ' : 'คาดการณ์อีก 4 สัปดาห์';
+      const tgtVal = M.product.basis === 'daily' ? M.target5 : M.target7;
+
+      return '' +
+        '<div data-type="' + id + '" class="rubber-select-card cursor-pointer bg-white rounded-3xl p-5 shadow-sm transition-all transform hover:-translate-y-1 ' +
+          (active ? 'border-2 border-brand-teal ring-4 ring-teal-500/10' : 'border-2 border-slate-200 hover:border-slate-300') + '">' +
+          '<div class="flex items-start justify-between">' +
+            '<div class="flex items-center gap-3">' +
+              '<div class="w-11 h-11 rounded-2xl ' + toneBg + ' flex items-center justify-center font-bold text-xl">' + P.icon + '</div>' +
+              '<div>' +
+                '<h4 class="font-bold text-base text-brand-800">' + P.label + '</h4>' +
+                '<span class="text-xs text-slate-500">' + P.cardSub + '</span>' +
+              '</div>' +
+            '</div>' +
+            '<span class="rubber-active-indicator ' + (active ? '' : 'hidden') + ' px-2.5 py-0.5 bg-brand-teal text-white text-[10px] font-bold rounded-full">กำลังแสดง</span>' +
+          '</div>' +
+          '<div class="mt-4 flex items-baseline justify-between">' +
+            '<div><span class="text-3xl font-extrabold text-slate-900">' + money(M.current, 2) + '</span> <span class="text-xs text-slate-500 font-medium">บาท/กก.</span></div>' +
+            '<span class="inline-flex items-center gap-1 text-xs font-bold ' + (up ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-rose-600 bg-rose-50 border-rose-200') + ' border px-2.5 py-1 rounded-xl">' +
+              '<i data-lucide="' + (up ? 'trending-up' : 'trending-down') + '" class="w-3.5 h-3.5"></i>' +
+              (up ? '+' : '') + money(M.changeAbs, 2) + ' (' + (up ? '+' : '') + money(M.changePct, 2) + '%)</span>' +
+          '</div>' +
+          '<div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">' +
+            '<span>' + tgtTxt + ': <strong class="' + (tgtVal >= M.current ? 'text-emerald-600' : 'text-rose-600') + '">' + money(tgtVal, 2) + ' ฿</strong></span>' +
+            '<span class="text-teal-600 font-medium flex items-center gap-0.5">ดูกราฟ <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></span>' +
+          '</div>' +
+          '<div class="mt-2 flex items-center gap-1.5">' +
+            sourceBadge(P.basis === 'daily' ? STATE.live.prices : STATE.live.weekly, STATE.asOf.price) +
+            '<span class="text-[10px] text-slate-400">' + (M.product.basis === 'daily' ? 'รอบวัน' : 'รอบสัปดาห์') + ' • ' + M.model.n + ' จุด</span>' +
+          '</div>' +
+        '</div>';
+    }).join('');
+    icons();
+  }
+
+  // ---------------------------------------------------------- RENDER: tabs + select
+  function renderSelectors() {
+    document.getElementById('chartTabs').innerHTML = PRODUCT_ORDER.map(id => {
+      const P = PRODUCTS[id];
+      const active = id === STATE.current;
+      return '<button data-chart-type="' + id + '" class="chart-tab-btn px-3 py-1.5 rounded-xl text-xs transition-all ' +
+        (active ? 'font-bold bg-white text-brand-800 shadow-sm' : 'font-semibold text-slate-600 hover:text-brand-800') + '">' +
+        P.icon + ' ' + P.label + '</button>';
+    }).join('');
+
+    const simSel = document.getElementById('simRubberType');
+    simSel.innerHTML = PRODUCT_ORDER.map(id => {
+      const P = PRODUCTS[id];
+      const M = STATE.models[id];
+      const price = M ? ' — ปัจจุบัน ' + money(M.current, 2) + ' ฿' : '';
+      return '<option value="' + id + '"' + (id === STATE.current ? ' selected' : '') + '>' + P.label + ' (DRC ' + P.drc + '%)' + price + '</option>';
+    }).join('');
+
+    renderHorizonSelect();
+
+    const ms = document.getElementById('modalRubberSelect');
+    if (ms) {
+      ms.innerHTML = PRODUCT_ORDER.map(id => {
+        const P = PRODUCTS[id];
+        const M = STATE.models[id];
+        return '<option value="' + id + '"' + (id === STATE.current ? ' selected' : '') + '>' + P.label + (M ? ' — ปัจจุบัน ' + money(M.current, 2) + ' ฿' : '') + '</option>';
+      }).join('');
+    }
+  }
+
+  function renderHorizonSelect() {
+    const M = STATE.models[STATE.current];
+    const sel = document.getElementById('simHorizon');
+    if (!M || !sel) return;
+    const unit = M.product.basis === 'daily' ? 'วันทำการ' : 'สัปดาห์';
+    sel.innerHTML = M.band.map((b, i) =>
+      '<option value="' + (i + 1) + '">' + (i + 1) + ' ' + unit + 'ข้างหน้า → ' + money(b.v, 2) + ' บาท (' + (b.v >= M.current ? '+' : '') + money(b.v - M.current, 2) + ')</option>'
+    ).join('');
+    sel.value = String(M.bestIdx + 1);
+  }
+
+  // Northern provinces: administrative 17-province grouping.
+  const NORTH_POINTS = [
+    ['แพร่',18.144,100.140],['เชียงใหม่',18.788,98.985],['เชียงราย',19.910,99.840],
+    ['ลำปาง',18.288,99.491],['ลำพูน',18.574,99.009],['แม่ฮ่องสอน',19.302,97.965],
+    ['น่าน',18.775,100.773],['พะเยา',19.166,99.902],['อุตรดิตถ์',17.620,100.100],
+    ['ตาก',16.884,99.125],['สุโขทัย',17.007,99.826],['พิษณุโลก',16.821,100.265],
+    ['พิจิตร',16.443,100.348],['กำแพงเพชร',16.483,99.522],['เพชรบูรณ์',16.419,101.160],
+    ['นครสวรรค์',15.704,100.137],['อุทัยธานี',15.379,100.024]
+  ];
+  let northRequest = 0;
+  const northCache = {};
+  async function loadNorthWeather() {
+    const index = Number(document.getElementById('northProvinceSelect').value) || 0;
+    const point = NORTH_POINTS[index];
+    const request = ++northRequest;
+    const status = document.getElementById('northWeatherStatus');
+    status.textContent = 'กำลังโหลด ' + point[0] + '...';
+    document.getElementById('northWeatherDays').innerHTML = '';
+    try {
+      const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + point[1] + '&longitude=' + point[2] + '&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=Asia%2FBangkok';
+      const data = await jget(url, 15000);
+      northCache[index] = data;
+      if (request !== northRequest) return;
+      paintNorth(data, point[0], false);
+    } catch (error) {
+      if (request !== northRequest) return;
+      if (northCache[index]) paintNorth(northCache[index], point[0], true);
+      else status.textContent = 'โหลดพยากรณ์ ' + point[0] + ' ไม่สำเร็จ กรุณาเชื่อมต่ออินเทอร์เน็ตและเลือกจังหวัดอีกครั้ง';
+    }
+  }
+  function paintNorth(data, name, cached) {
+    const daily = data.daily;
+    document.getElementById('northWeatherStatus').textContent = name + ' • ' + (cached ? 'ข้อมูลสำเนาจากการโหลดครั้งก่อนในหน้านี้' : 'พยากรณ์ดึงล่าสุด') + ' • ' + fmtThaiDate(daily.time[0], true);
+    document.getElementById('northWeatherDays').innerHTML = daily.time.map((date, i) =>
+      '<div class="rounded-xl bg-sky-50 border border-sky-100 p-3"><div class="text-xs font-semibold">' + fmtThaiDate(date, false) + '</div><div class="text-lg font-bold text-sky-800 mt-2">' + money(daily.precipitation_sum[i], 1) + ' มม.</div><div class="text-xs text-slate-600 mt-1">' + money(daily.temperature_2m_min[i], 0) + '–' + money(daily.temperature_2m_max[i], 0) + ' °C</div></div>'
+    ).join('');
+  }
+
+  // ---------------------------------------------------------- PNG PRICE EXPORT
+  async function createPricePng(id) {
+    const M = STATE.models[id];
+    if (!M || !M.series.length) throw new Error('ไม่มีข้อมูลราคาสำหรับส่งออก');
+    if (document.fonts) await document.fonts.ready;
+    const daily = M.product.basis === 'daily';
+    const hasPrevious = M.series.length >= 2;
+    const last = M.last;
+    const previous = hasPrevious ? M.prev : null;
+    const difference = hasPrevious ? last.price - previous.price : null;
+    const percent = hasPrevious && previous.price > 0 ? difference / previous.price * 100 : null;
+    const period = s => daily ? fmtThaiDate(s.date, true) : (() => {
+      const parts = s.ym.split('/').map(Number);
+      return 'สัปดาห์ที่ ' + parts[2] + ' • ' + TH_MONTH[parts[1] - 1] + ' ' + parts[0];
+    })();
+    const live = daily ? STATE.live.prices : STATE.live.weekly;
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200; canvas.height = 900;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('อุปกรณ์นี้ไม่รองรับการสร้างภาพ');
+    const color = difference === null || difference === 0 ? '#475569' : difference > 0 ? '#047857' : '#be123c';
+    function box(x, y, w, h, radius, fill) {
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, radius); ctx.fillStyle = fill; ctx.fill();
+    }
+    function text(value, x, y, size, fill, weight, maxWidth) {
+      ctx.font = (weight || 400) + ' ' + size + 'px Prompt, Tahoma, sans-serif';
+      if (maxWidth) while (ctx.measureText(value).width > maxWidth && size > 16) {
+        size--; ctx.font = (weight || 400) + ' ' + size + 'px Prompt, Tahoma, sans-serif';
+      }
+      ctx.fillStyle = fill; ctx.fillText(value, x, y);
+    }
+    ctx.fillStyle = '#f1f5f9'; ctx.fillRect(0, 0, 1200, 900);
+    box(36, 36, 1128, 828, 32, '#ffffff');
+    box(36, 36, 1128, 152, 32, '#0B2A5B');
+    ctx.fillStyle = '#0B2A5B'; ctx.fillRect(36, 130, 1128, 58);
+    text('ParaTrend', 80, 103, 38, '#ffffff', 700);
+    text('รายงานเปรียบเทียบราคายางพารา', 80, 150, 25, '#cbd5e1', 400);
+    text(live ? 'ข้อมูลดึงล่าสุด' : 'ข้อมูลสำเนาในไฟล์', 845, 104, 22, '#99f6e4', 600);
+    text(M.product.label, 80, 252, 42, '#0B2A5B', 700, 1030);
+    text('รอบล่าสุด: ' + period(last), 80, 298, 23, '#64748b', 400, 1030);
+    text('ราคาล่าสุด', 80, 353, 23, '#64748b', 500);
+    text(money(last.price, 2), 80, 448, 88, '#0f172a', 700);
+    text('บาท/กก.', 470, 443, 26, '#64748b', 500);
+    box(715, 330, 405, 132, 22, difference > 0 ? '#ecfdf5' : difference < 0 ? '#fff1f2' : '#f1f5f9');
+    text(percent === null ? 'ไม่มีค่าเปรียบเทียบ' : (difference > 0 ? '+' : '') + money(percent, 2) + '%', 745, 405, 58, color, 700, 345);
+    text(difference > 0 ? 'เพิ่มขึ้นจากรอบก่อน' : difference < 0 ? 'ลดลงจากรอบก่อน' : 'ราคาไม่เปลี่ยนแปลง', 745, 442, 22, color, 500, 345);
+    box(80, 490, 1040, 140, 20, '#f8fafc');
+    text('ราคาก่อนหน้า', 108, 534, 22, '#64748b', 500);
+    text(previous ? money(previous.price, 2) + ' บาท/กก.' : 'ไม่มีข้อมูล', 108, 589, 35, '#0B2A5B', 700);
+    text(previous ? period(previous) : '-', 640, 538, 21, '#64748b', 400, 450);
+    text(difference === null ? '-' : 'ส่วนต่าง ' + (difference > 0 ? '+' : '') + money(difference, 2) + ' บาท/กก.', 640, 589, 28, color, 600, 450);
+    text(daily ? 'เทียบกับวันประกาศราคาครั้งก่อน (ข้ามวันที่ไม่มีราคา)' : 'ข้อมูลรายสัปดาห์: เทียบสัปดาห์ก่อน ไม่ใช่การเปลี่ยนแปลงรายวัน', 80, 682, 23, '#475569', 500, 1040);
+    text('สูตร: (ราคาล่าสุด − ราคาก่อนหน้า) ÷ ราคาก่อนหน้า × 100', 80, 723, 21, '#64748b', 400, 1040);
+    text('แหล่งข้อมูล: สำนักงานเศรษฐกิจการเกษตร (สศก.)', 80, 782, 22, '#0B2A5B', 500);
+    text(daily ? 'ราคาอ้างอิงรวมรายตลาด • ไม่ใช่ราคาพยากรณ์' : 'ชุดข้อมูล: ยางก้อน คละ • ไม่ใช่ราคาพยากรณ์', 80, 820, 20, '#64748b', 400);
+    return { canvas: canvas, filename: 'ParaTrend-' + id + '-' + (daily ? last.date : last.ym.replace(/\//g, '-')) + '.png' };
+  }
+
+  async function createAllPricesPng() {
+    if (document.fonts) await document.fonts.ready;
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200; canvas.height = 1200;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('อุปกรณ์นี้ไม่รองรับการสร้างภาพ');
+    function box(x, y, w, h, fill) {
+      context.beginPath(); context.roundRect(x, y, w, h, 24);
+      context.fillStyle = fill; context.fill();
+    }
+    function text(value, x, y, size, fill, weight, maxWidth) {
+      context.font = (weight || 400) + ' ' + size + 'px Prompt, Tahoma, sans-serif';
+      while (maxWidth && context.measureText(value).width > maxWidth && size > 16) {
+        size--; context.font = (weight || 400) + ' ' + size + 'px Prompt, Tahoma, sans-serif';
+      }
+      context.fillStyle = fill; context.fillText(value, x, y);
+    }
+    function period(observation, daily) {
+      if (daily) return fmtThaiDate(observation.date, true);
+      const parts = observation.ym.split('/').map(Number);
+      return 'สัปดาห์ ' + parts[2] + ' / ' + TH_MONTH[parts[1] - 1] + ' ' + parts[0];
+    }
+    context.fillStyle = '#f1f5f9'; context.fillRect(0, 0, 1200, 1200);
+    box(36, 32, 1128, 170, '#0B2A5B');
+    text('ParaTrend', 72, 94, 42, '#ffffff', 700);
+    text('ราคายางพารา 3 ประเภท', 72, 152, 37, '#99f6e4', 600);
+    text('เทียบรอบล่าสุดที่มีราคา', 750, 145, 24, '#cbd5e1', 400, 365);
+    PRODUCT_ORDER.forEach((id, index) => {
+      const M = STATE.models[id];
+      const y = 224 + index * 262;
+      box(36, y, 1128, 240, '#ffffff');
+      text(PRODUCTS[id].label, 72, y + 49, 33, '#0B2A5B', 700, 550);
+      if (!M || M.series.length < 2) {
+        text('ไม่มีข้อมูลเพียงพอสำหรับเปรียบเทียบ', 72, y + 120, 25, '#64748b', 400);
+        return;
+      }
+      const daily = M.product.basis === 'daily';
+      const change = M.last.price - M.prev.price;
+      const percent = M.prev.price > 0 ? change / M.prev.price * 100 : null;
+      const color = change > 0 ? '#047857' : change < 0 ? '#be123c' : '#475569';
+      const live = daily ? STATE.live.prices : STATE.live.weekly;
+      text(live ? 'ดึงข้อมูลล่าสุด' : 'ข้อมูลสำเนา', 920, y + 47, 20, '#64748b', 500, 200);
+      text('ล่าสุด: ' + period(M.last, daily), 72, y + 84, 21, '#64748b', 400, 620);
+      text(money(M.last.price, 2), 72, y + 157, 64, '#0f172a', 700);
+      text('บาท/กก.', 320, y + 151, 24, '#64748b', 400);
+      box(744, y + 70, 380, 98, change > 0 ? '#ecfdf5' : change < 0 ? '#fff1f2' : '#f1f5f9');
+      text(percent === null ? 'ไม่มีค่าเปรียบเทียบ' : (change > 0 ? '+' : '') + money(percent, 2) + '%', 774, y + 133, 47, color, 700, 320);
+      text('ก่อนหน้า: ' + money(M.prev.price, 2) + ' บาท/กก. • ' + period(M.prev, daily), 72, y + 204, 21, '#475569', 400, 670);
+      text('ส่วนต่าง ' + (change > 0 ? '+' : '') + money(change, 2) + ' บาท/กก.', 774, y + 204, 23, color, 600, 325);
+    });
+    text('รายวัน: เทียบวันประกาศครั้งก่อน • ยางก้อนคละ: เทียบสัปดาห์ก่อน', 72, 1051, 23, '#475569', 500, 1056);
+    text('แหล่งข้อมูล: สำนักงานเศรษฐกิจการเกษตร (สศก.) • ไม่ใช่ราคาพยากรณ์', 72, 1097, 22, '#0B2A5B', 500, 1056);
+    text('% เปลี่ยนแปลง = (ราคาล่าสุด − ราคาก่อนหน้า) ÷ ราคาก่อนหน้า × 100', 72, 1143, 21, '#64748b', 400, 1056);
+    return { canvas: canvas, filename: 'ParaTrend-Facebook-3-products-' + (STATE.asOf.price || 'latest') + '.png' };
+  }
+
+  let pngPreviewUrl = null;
+  let pngShareFile = null;
+  async function exportPricePng() {
+    const button = document.getElementById('exportPricePngBtn');
+    button.disabled = true;
+    try {
+      const result = await createAllPricesPng();
+      const blob = await new Promise(resolve => result.canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('ไม่สามารถสร้างไฟล์ PNG ได้');
+      if (pngPreviewUrl) URL.revokeObjectURL(pngPreviewUrl);
+      pngPreviewUrl = URL.createObjectURL(blob);
+      pngShareFile = new File([blob], result.filename, { type: 'image/png' });
+      document.getElementById('pngPreviewImage').src = pngPreviewUrl;
+      const link = document.getElementById('pngDownloadLink');
+      link.href = pngPreviewUrl; link.download = result.filename;
+      document.getElementById('sharePngButton').hidden = !(navigator.share && navigator.canShare && navigator.canShare({ files: [pngShareFile] }));
+      document.getElementById('pngPreviewModal').classList.remove('hidden');
+    } catch (error) {
+      triggerToast('ส่งออกไม่สำเร็จ', error.message, false);
+    } finally { button.disabled = false; }
+  }
+
+  // ---------------------------------------------------------- RENDER: chart
+  let chartInstance = null;
+
+  function chartArrays(M) {
+    const labels = M.series.map(s => s.label).concat(M.projDates.map(d => M.product.basis === 'daily' ? fmtShort(d) : d));
+    const hist = M.series.map(s => s.price).concat(M.band.map(() => null));
+    const bridge = M.series[M.series.length - 1].price;
+    const fore = M.series.slice(0, -1).map(() => null).concat([bridge]).concat(M.band.map(b => b.v));
+    const hi   = M.series.slice(0, -1).map(() => null).concat([bridge]).concat(M.band.map(b => b.hi));
+    const lo   = M.series.slice(0, -1).map(() => null).concat([bridge]).concat(M.band.map(b => b.lo));
+    return { labels, hist, fore, hi, lo };
+  }
+
+  function setupForecastChart() {
+    const M = STATE.models[STATE.current];
+    if (!M || typeof Chart === 'undefined') return;
+    const ctx = document.getElementById('forecastChartCanvas').getContext('2d');
+    const a = chartArrays(M);
+
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: a.labels,
+        datasets: [
+          { label: 'ราคาจริง', data: a.hist, borderColor: '#0B2A5B', backgroundColor: 'rgba(11,42,91,0.05)', borderWidth: 3.5, fill: false, tension: 0.3, pointRadius: 3.5, pointBackgroundColor: '#0B2A5B', pointHoverRadius: 7 },
+          { label: 'โมเดลคาดการณ์', data: a.fore, borderColor: '#0D9488', backgroundColor: 'rgba(13,148,136,0.08)', borderWidth: 3.5, borderDash: [6, 6], fill: false, tension: 0.3, pointRadius: 3.5, pointBackgroundColor: '#0D9488', pointHoverRadius: 7 },
+          { label: 'กรอบบน (80%)', data: a.hi, borderColor: 'transparent', backgroundColor: 'rgba(20,184,166,0.14)', fill: '+1', pointRadius: 0, tension: 0.3 },
+          { label: 'กรอบล่าง (80%)', data: a.lo, borderColor: 'transparent', backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: 0.3 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#061838',
+            titleFont: { family: 'Prompt', size: 12 },
+            bodyFont: { family: 'Prompt', size: 12 },
+            padding: 10, cornerRadius: 12,
+            callbacks: {
+              label: function (c) {
+                const v = c.parsed.y;
+                if (v === null || v === undefined) return '';
+                return c.dataset.label + ': ' + v.toFixed(2) + ' บาท/กก.';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { color: '#F1F5F9' }, ticks: { font: { family: 'Prompt', size: 10 }, color: '#64748B', maxRotation: 60, autoSkip: true, maxTicksLimit: 14 } },
+          y: { grid: { color: '#F1F5F9' }, ticks: { font: { family: 'Prompt', size: 11 }, color: '#64748B', callback: v => v.toFixed(1) + ' ฿' } }
+        }
+      }
+    });
+  }
+
+  function updateChart() {
+    const M = STATE.models[STATE.current];
+    if (!M) return;
+    if (!chartInstance) { setupForecastChart(); }
+    if (!chartInstance) return;
+
+    const a = chartArrays(M);
+    chartInstance.data.labels = a.labels;
+    chartInstance.data.datasets[0].data = a.hist;
+    chartInstance.data.datasets[1].data = a.fore;
+    chartInstance.data.datasets[2].data = STATE.showBand ? a.hi : [];
+    chartInstance.data.datasets[3].data = STATE.showBand ? a.lo : [];
+    chartInstance.update();
+
+    document.getElementById('chartRubberTitle').textContent = M.product.label;
+    document.getElementById('chartSubtitle').textContent = M.product.basis === 'daily'
+      ? 'ราคาจริงรายวันทำการ (' + M.series.length + ' วัน) และโมเดลคาดการณ์ล่วงหน้า ' + M.H + ' วันทำการ'
+      : 'ราคาเฉลี่ยรายสัปดาห์ (' + M.series.length + ' สัปดาห์) และโมเดลคาดการณ์ล่วงหน้า ' + M.H + ' สัปดาห์';
+    document.getElementById('backtestNote').textContent =
+      '*backtest MAPE ' + money(M.model.bt.mape, 2) + '% (' + M.model.bt.origins + ' จุดเริ่มต้น) • Damped Holt α=' +
+      M.model.prm.alpha + ' β=' + M.model.prm.beta + ' φ=' + M.model.prm.phi;
+  }
+
+  // ---------------------------------------------------------- RENDER: targets
+  function renderTargets() {
+    const M = STATE.models[STATE.current];
+    if (!M) return;
+    const unit = M.product.basis === 'daily' ? 'วันทำการ' : 'สัปดาห์';
+    document.getElementById('targetHorizonBadge').textContent = M.H + ' ' + unit + 'ข้างหน้า';
+
+    const rows = [
+      { h: Math.min(3, M.H), tag: 'ช่วงเฝ้าระวัง', cls: 'text-teal-300' },
+      { h: M.bestIdx + 1, tag: '★ จุดขายที่โมเดลแนะนำ', cls: 'text-amber-300' },
+      { h: M.H, tag: 'ปลายกรอบพยากรณ์', cls: 'text-slate-400' }
+    ];
+    const seen = {};
+    const uniq = rows.filter(r => { if (seen[r.h]) return false; seen[r.h] = 1; return true; });
+
+    document.getElementById('targetRows').innerHTML = uniq.map((r, idx) => {
+      const b = M.band[r.h - 1];
+      const d = b.v - M.current;
+      const label = r.h + ' ' + unit + 'ข้างหน้า';
+      const dateNote = M.product.basis === 'daily' ? fmtThaiDate(M.projDates[r.h - 1], false) : '';
+      return '' +
+        '<div class="flex justify-between items-center py-1 ' + (idx ? 'border-t border-brand-700/50' : '') + '">' +
+          '<div>' +
+            '<span class="text-xs text-slate-300 block">' + label + (dateNote ? ' (' + dateNote + ')' : '') + '</span>' +
+            '<span class="text-[11px] ' + r.cls + '">' + r.tag + '</span>' +
+          '</div>' +
+          '<div class="text-right">' +
+            '<span class="text-base font-bold text-white">' + money(b.v, 2) + ' ฿</span>' +
+            '<span class="text-xs block font-semibold ' + (d >= 0 ? 'text-emerald-400' : 'text-rose-400') + '">' + (d >= 0 ? '+' : '') + money(d, 2) + ' บาท</span>' +
+          '</div>' +
+        '</div>';
+    }).join('');
+
+    const bw = M.band[M.bestIdx];
+    const gain = bw.v - M.current;
+    const el = document.getElementById('bestWindowText');
+    if (gain > 0) {
+      el.textContent = 'รออีก ' + (M.bestIdx + 1) + ' ' + unit + ' เป้าหมาย ' + money(bw.v, 2) + ' บาท (กรอบ ' + money(bw.lo, 2) + '–' + money(bw.hi, 2) + ') คาดได้เพิ่ม ' + money(gain, 2) + ' บาท/กก.';
+    } else {
+      el.textContent = 'โมเดลมองว่าราคามีแนวโน้มไม่ไปต่อ — ควรทยอยขายที่ราคาปัจจุบัน ' + money(M.current, 2) + ' บาท/กก. และแบ่งขายเป็นรอบเพื่อกระจายความเสี่ยง';
+    }
+  }
+
+  // ---------------------------------------------------------- RENDER: weather box
+  function renderWeatherBox() {
+    const m = indicatorModel();
+    const el = document.getElementById('weatherSummary');
+    const pill = document.getElementById('supplyPill');
+    if (!m.rain) { el.textContent = 'ไม่สามารถดึงข้อมูลฝนได้ — ใช้ข้อมูลสำเนาไม่ได้'; return; }
+    const stopPct = Math.round((m.rain.stopDays / m.rain.nDays) * 100);
+    pill.textContent = 'โอกาสหยุดกรีด ' + m.rain.stopDays + '/' + m.rain.nDays + ' วัน';
+    pill.className = 'text-[10px] font-bold px-2 py-0.5 rounded-md ' + (m.rain.stopDays >= 3 ? 'bg-rose-50 text-rose-700' : (m.rain.stopDays >= 2 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'));
+    const next3 = m.rain.perDay.slice(0, 3).map(x => fmtThaiDate(x.date, false) + ' ' + money(x.mm, 1) + ' มม.').join(', ');
+    el.innerHTML = 'ฝนสะสม 7 วันข้างหน้าภาคใต้เฉลี่ย <strong>' + money(m.rain.avgPerDay, 1) + ' มม./วัน</strong> (รวม ' + money(m.rain.total, 0) + ' มม.) • ' +
+      m.rain.stopDays + ' วันมีฝน ≥10 มม. ซึ่งมักหยุดการกรีด • 3 วันแรก: ' + escHtml(next3);
+  }
+
+  // ---------------------------------------------------------- RENDER: simulator
+  function runProfitSimulator() {
+    const type = document.getElementById('simRubberType').value;
+    const M = STATE.models[type];
+    const drcLabel = document.getElementById('drcNoteLabel');
+    if (!M) { drcLabel.textContent = ''; return; }
+    drcLabel.textContent = M.product.drcNote;
+
+    const weight = Math.max(0, parseFloat(document.getElementById('simWeightInput').value) || 0);
+    const drc = Math.min(100, Math.max(1, parseFloat(document.getElementById('simDrcInput').value) || 100)) / 100;
+    const dryWeight = weight * drc;
+
+    const hIdx = Math.min(M.band.length, Math.max(1, parseInt(document.getElementById('simHorizon').value, 10) || (M.bestIdx + 1))) - 1;
+    const band = M.band[hIdx];
+    const priceToday = M.current;
+    const priceFc = band.v;
+
+    const revToday = Math.round(dryWeight * priceToday);
+    const revFc = Math.round(dryWeight * priceFc);
+    const diff = revFc - revToday;
+    const diffPct2 = revToday > 0 ? (diff / revToday) * 100 : 0;
+    const unit = M.product.basis === 'daily' ? 'วันทำการ' : 'สัปดาห์';
+
+    document.getElementById('simPriceTodayText').textContent = 'ราคาจริงวันนี้ ' + money(priceToday, 2) + ' ฿/กก. (ณ ' + fmtThaiDate(STATE.asOf.price, false) + ')';
+    document.getElementById('simRevenueTodayVal').textContent = intFmt(revToday);
+    document.getElementById('simOptionBTitle').textContent = 'รอขายในอีก ' + (hIdx + 1) + ' ' + unit;
+    document.getElementById('simPriceForecastText').textContent = 'เป้าหมายโมเดล ' + money(priceFc, 2) + ' ฿/กก. (กรอบ ' + money(band.lo, 2) + '–' + money(band.hi, 2) + ')';
+    document.getElementById('simRevenueForecastVal').textContent = intFmt(revFc);
+    document.getElementById('simBandWidth').textContent = money(band.w, 2);
+
+    const goodBox = document.getElementById('simOptionB');
+    const badge = document.getElementById('simOptionBBadge');
+    const diffEl = document.getElementById('simDiffAmountText');
+    const banner = document.getElementById('simDiffBanner');
+    const advice = document.getElementById('simAdviceSummary');
+
+    if (diff >= 0) {
+      goodBox.className = 'p-4 sm:p-5 rounded-2xl bg-emerald-50/70 border-2 border-emerald-400 flex flex-col justify-between relative shadow-sm';
+      badge.className = 'absolute -top-3 right-4 bg-emerald-600 text-white text-[11px] font-bold px-3 py-0.5 rounded-full shadow-sm flex items-center gap-1';
+      badge.innerHTML = '<i data-lucide="check" class="w-3 h-3"></i> โมเดลแนะนำ';
+      diffEl.textContent = '+' + intFmt(diff) + ' บาท (+' + money(diffPct2, 2) + '%)';
+      banner.className = 'p-4 rounded-2xl bg-gradient-to-r from-brand-teal to-emerald-600 text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3';
+      advice.textContent = 'ควรถือรออีก ' + (hIdx + 1) + ' ' + unit + ' คาดได้เพิ่มราว ' + intFmt(diff) + ' บาท (ความเชื่อมั่นโมเดล ' + M.conf.value + '%)';
+    } else {
+      goodBox.className = 'p-4 sm:p-5 rounded-2xl bg-rose-50/70 border-2 border-rose-300 flex flex-col justify-between relative shadow-sm';
+      badge.className = 'absolute -top-3 right-4 bg-rose-600 text-white text-[11px] font-bold px-3 py-0.5 rounded-full shadow-sm flex items-center gap-1';
+      badge.innerHTML = '<i data-lucide="alert-triangle" class="w-3 h-3"></i> โมเดลเตือน';
+      diffEl.textContent = intFmt(diff) + ' บาท (' + money(diffPct2, 2) + '%)';
+      banner.className = 'p-4 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-700 text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3';
+      advice.textContent = 'รอแล้วคาดว่าจะได้ลดลงราว ' + intFmt(Math.abs(diff)) + ' บาท — แนะนำทยอยขายวันนี้หรือแบ่งขายทันที';
+    }
+    icons();
+  }
+
+  // ---------------------------------------------------------- RENDER: board
+  let activeRegion = 'all';
+
+  function regionOf(province) { return PROVINCE_REGION[province] || 'unknown'; }
+
+  function boardRows() {
+    return STATE.marketRows.map(r => {
+      const h = STATE.marketHist[r.code + '|' + r.market];
+      const tail = h ? h.pts.slice(-30).map(p => p[1]) : [r.price];
+      const a = avg(tail);
+      const lo = Math.min.apply(null, tail), hi = Math.max.apply(null, tail);
+      return {
+        market: r.market, province: r.province, region: regionOf(r.province),
+        code: r.code, price: r.price, avg: a, lo: lo, hi: hi,
+        vsAvg: pct(r.price, a)
+      };
+    });
+  }
+
+  function renderRegionPills() {
+    const regions = ['all'];
+    ['south', 'east', 'isan', 'north', 'unknown'].forEach(k => {
+      if (STATE.marketRows.some(r => regionOf(r.province) === k)) regions.push(k);
+    });
+    document.getElementById('regionFilterPills').innerHTML = regions.map(k => {
+      const active = k === activeRegion;
+      const label = k === 'all' ? 'ทั้งหมด' : REGION_NAME[k];
+      return '<button data-region="' + k + '" class="region-pill px-3 py-1.5 rounded-xl text-xs transition-all ' +
+        (active ? 'font-bold bg-brand-800 text-white shadow-sm' : 'font-medium bg-slate-100 text-slate-600 hover:bg-slate-200') + '">' + label + '</button>';
+    }).join('');
+  }
+
+  function renderLocalBoard() {
+    renderRegionPills();
+    const tbody = document.getElementById('localBoardTableBody');
+    const q = (document.getElementById('marketSearchInput').value || '').trim().toLowerCase();
+    const all = boardRows();
+    const rows = all.filter(r => {
+      const okR = activeRegion === 'all' || r.region === activeRegion;
+      const okQ = !q || r.market.toLowerCase().includes(q) || r.province.toLowerCase().includes(q) ||
+                  (REGION_NAME[r.region] || '').includes(q) || PRODUCTS[r.code].label.toLowerCase().includes(q);
+      return okR && okQ;
+    }).sort((a, b) => b.price - a.price);
+
+    document.getElementById('marketTableCount').textContent = 'แสดง ' + rows.length + ' จากทั้งหมด ' + all.length + ' จุดรับซื้อ';
+    document.getElementById('boardSubtitle').textContent =
+      'จุดรับซื้อที่ สศก. รายงานราคา ณ ' + fmtThaiDate(STATE.asOf.price, true) + ' — เปรียบเทียบกับค่าเฉลี่ย 30 วันทำการ';
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="py-8 text-center text-slate-400">' +
+        '<i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i><br>' +
+        'ไม่พบจุดรับซื้อที่ตรงกับเงื่อนไข (ข้อมูลจริงมีเฉพาะจังหวัดที่มีตลาดกลาง/โรงงานที่เข้าร่วมรายงาน)</td></tr>';
+      icons();
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+      const P = PRODUCTS[r.code];
+      const hl = r.code === STATE.current;
+      const high = r.vsAvg >= 0;
+      return '' +
+        '<tr class="hover:bg-slate-50/90 transition-colors">' +
+          '<td class="py-3 px-4"><span class="inline-flex items-center gap-2 font-bold text-brand-800">' +
+            '<span class="w-2 h-2 rounded-full bg-brand-teal shrink-0"></span><span class="min-w-0">' + escHtml(r.market) + '</span></span></td>' +
+          '<td class="py-3 px-3 text-slate-600">' + escHtml(r.province) + ' <span class="text-[10px] text-slate-400">(' + REGION_NAME[r.region] + ')</span></td>' +
+          '<td class="py-3 px-3 text-slate-600 text-xs">' + P.icon + ' ' + P.label + '</td>' +
+          '<td class="py-3 px-3 text-right font-extrabold ' + (hl ? 'text-teal-700 bg-teal-50/70 rounded-lg' : 'text-slate-800') + '">' + money(r.price, 2) + ' ฿</td>' +
+          '<td class="py-3 px-3 text-right text-slate-600">' + money(r.avg, 2) + ' ฿</td>' +
+          '<td class="py-3 px-3 text-right text-slate-500 text-[11px] whitespace-nowrap">' + money(r.lo, 2) + ' – ' + money(r.hi, 2) + '</td>' +
+          '<td class="py-3 px-4 text-center"><span class="inline-block text-[11px] px-2.5 py-0.5 rounded-full font-bold ' +
+            (high ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800') + '">' +
+            (high ? '▲ สูงกว่าเฉลี่ย ' : '▼ ต่ำกว่าเฉลี่ย ') + money(Math.abs(r.vsAvg), 2) + '%</span></td>' +
+        '</tr>';
+    }).join('');
+    icons();
+  }
+
+  // ---------------------------------------------------------- RENDER: sources
+  function renderSources() {
+    const statusNames = { live: 'ดึงจาก สศก. สำเร็จ', cache: 'แคชเซิร์ฟเวอร์ไม่เกิน 5 นาที', stale: 'แหล่งข้อมูลล่ม ใช้แคชเก่า', snapshot: 'แหล่งข้อมูลล่ม ใช้สำเนาที่แนบมากับเว็บ' };
+    const describe = key => {
+      const meta = rubberMeta[key];
+      if (!meta) return 'โหลด backend ไม่สำเร็จ ใช้ข้อมูลล่าสุดที่มีในหน้านี้หรือสำเนาในไฟล์';
+      return (statusNames[meta.status] || 'ไม่ทราบสถานะ') + ' • รอบราคา ' + meta.priceAsOf +
+        (meta.fetchedAt ? ' • ดึงเมื่อ ' + new Date(meta.fetchedAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) : ' • ไม่มีเวลาดึงสด');
+    };
+    const priceReason = describe('daily');
+    const S = [
+      {
+        t: 'ราคายางรายวัน + รายตลาด', u: 'agriapi.nabc.go.th · /api/daily-prices/category',
+        d: 'สำนักงานเศรษฐกิจการเกษตร (สศก.) — ' + (STATE.asOf.price ? 'ราคาถึง ' + fmtThaiDate(STATE.asOf.price, true) : 'ไม่มีข้อมูล'),
+        r: priceReason,
+        live: STATE.live.prices
+      },
+      {
+        t: 'ราคายางรายสัปดาห์/รายเดือน', u: 'agriapi.nabc.go.th · /api/weekly-prices/product',
+        d: 'ราคากลางระดับประเทศ incl. ยางก้อนถ้วย (ซึ่งไม่มีข้อมูลรายวัน)',
+        r: ['latex', 'cup', 'rss3'].map(id => PRODUCTS[id].label + ': ' + describe(id)).join(' | '),
+        live: STATE.live.weekly
+      },
+      {
+        t: 'อัตราแลกเปลี่ยน USD/THB', u: 'api.frankfurter.dev · 21 วันย้อนหลัง',
+        d: (STATE.asOf.fx ? 'ล่าสุด ' + fmtThaiDate(STATE.asOf.fx, true) : 'ไม่มีข้อมูล'),
+        r: STATE.live.fx ? 'ดึงสำเร็จ ' + STATE.fxSeries.length + ' วันทำการ' : String(STATE.errors.fx || 'ไม่ทราบสาเหตุ'),
+        live: STATE.live.fx
+      },
+      {
+        t: 'ปริมาณฝน (พยากรณ์ 7 วัน)', u: 'api.open-meteo.com · 7 จังหวัด',
+        d: 'ใช้ประเมินโอกาสหยุดกรีด (เกณฑ์ฝนสะสม ≥ 10 มม./วัน)',
+        r: STATE.live.wx ? 'ดึงสำเร็จ ' + Object.keys(STATE.wx.loc).length + ' จังหวัด × ' + STATE.wx.dates.length + ' วัน' : String(STATE.errors.wx || 'ไม่ทราบสาเหตุ'),
+        live: STATE.live.wx
+      }
+    ];
+    document.getElementById('sourceList').innerHTML = S.map(s =>
+      '<div class="p-3.5 rounded-2xl border ' + (s.live ? 'border-emerald-200 bg-emerald-50/40' : 'border-amber-200 bg-amber-50/50') + '">' +
+        '<div class="flex items-center justify-between gap-2">' +
+          '<span class="text-xs font-bold text-brand-800">' + escHtml(s.t) + '</span>' +
+          (s.live ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">● ใช้ข้อมูลสด</span>'
+                  : '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">◆ ใช้ข้อมูลสำเนา</span>') +
+        '</div>' +
+        '<div class="text-[11px] text-slate-500 mt-1 break-all">' + escHtml(s.u) + '</div>' +
+        '<div class="text-[11px] text-slate-600 mt-1">' + escHtml(s.d) + '</div>' +
+        '<div class="text-[11px] mt-1.5 pt-1.5 border-t border-slate-200/70 ' + (s.live ? 'text-slate-500' : 'text-amber-800') + '">' + escHtml(s.r) + '</div>' +
+      '</div>'
+    ).join('') +
+    '<div class="md:col-span-2 mt-1 p-3 rounded-2xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed">' +
+      '<strong>Backend พร้อมใช้งาน:</strong> แอปเรียก /api/rubber/daily และ /api/rubber/weekly ภายในเว็บนี้อัตโนมัติ • แคช 5 นาที • รอแหล่งข้อมูลไม่เกิน 12 วินาที • ถ้าแหล่งข้อมูลล่มใช้แคชล่าสุดไม่เกิน 24 ชั่วโมง หรือสำเนาที่แนบกับเว็บพร้อมระบุรอบราคา • แคชอยู่ในหน่วยความจำและหายเมื่อเซิร์ฟเวอร์เริ่มใหม่' +
+    '</div>';
+  }
+
+  function renderStatusHeader() {
+    const pill = document.getElementById('dataModePill');
+    const status = document.getElementById('marketStatusLabel');
+    const ts = document.getElementById('marketTimestamp');
+    const nLive = ['prices', 'weekly', 'fx', 'wx'].filter(k => STATE.live[k]).length;
+
+    if (!STATE.ready) {
+      pill.className = 'bg-slate-500/20 text-slate-200 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-slate-400/30 flex items-center gap-1.5';
+      pill.innerHTML = '<span class="w-2 h-2 rounded-full bg-slate-300 pulse-ring"></span> กำลังโหลด';
+      return;
+    }
+    if (nLive === 4) {
+      pill.className = 'bg-emerald-500/20 text-emerald-300 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1.5';
+      pill.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 pulse-ring"></span> ข้อมูลสดครบทั้ง 4 แหล่ง';
+      status.className = 'text-[11px] text-emerald-300 font-semibold flex items-center justify-end gap-1';
+      status.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span> เชื่อมต่อแหล่งข้อมูลครบ';
+    } else if (nLive > 0) {
+      pill.className = 'bg-amber-500/20 text-amber-200 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-amber-400/30 flex items-center gap-1.5';
+      pill.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400 pulse-ring"></span> ข้อมูลผสม (' + nLive + '/4 สด)';
+      status.className = 'text-[11px] text-amber-200 font-semibold flex items-center justify-end gap-1';
+      status.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> บางแหล่งใช้ข้อมูลสำเนา';
+    } else {
+      pill.className = 'bg-rose-500/20 text-rose-200 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-rose-400/30 flex items-center gap-1.5';
+      pill.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-400"></span> ออฟไลน์ — ข้อมูลสำเนา';
+      status.className = 'text-[11px] text-rose-200 font-semibold flex items-center justify-end gap-1';
+      status.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-400"></span> ดึงข้อมูลไม่สำเร็จ';
+    }
+    ts.textContent = 'ราคาล่าสุด ' + (STATE.asOf.price ? fmtThaiDate(STATE.asOf.price, true) : '-') +
+      (STATE.snapshotAt ? ' • snapshot ' + String(STATE.snapshotAt).slice(0, 16).replace('T', ' ') : '');
+  }
+
+  function renderAll() {
+    STATE.ready = true;
+    if (!STATE.snapshotAt && window.PARATREND_SNAPSHOT && window.PARATREND_SNAPSHOT.meta) {
+      STATE.snapshotAt = window.PARATREND_SNAPSHOT.meta.generatedAt;
+    }
+    renderStatusHeader();
+    renderBanner();
+    renderPriceCards();
+    renderSelectors();
+    renderIndicators();
+    updateChart();
+    renderTargets();
+    renderWeatherBox();
+    runProfitSimulator();
+    renderLocalBoard();
+    renderSources();
+    icons();
+  }
+
+  // ---------------------------------------------------------- ALERTS
+  function triggerToast(title, message, isSuccess) {
+    const toast = document.getElementById('toastNotification');
+    const w = document.getElementById('toastIconWrapper');
+    document.getElementById('toastTitle').textContent = title;
+    document.getElementById('toastMessage').textContent = message;
+    if (isSuccess) {
+      w.className = 'p-2 rounded-xl bg-emerald-500 text-white shrink-0';
+      w.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>';
+    } else {
+      w.className = 'p-2 rounded-xl bg-amber-500 text-white shrink-0';
+      w.innerHTML = '<i data-lucide="info" class="w-4 h-4"></i>';
+    }
+    icons();
+    toast.classList.remove('translate-y-28', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => {
+      toast.classList.add('translate-y-28', 'opacity-0');
+      toast.classList.remove('translate-y-0', 'opacity-100');
+    }, 4500);
+  }
+
+  function checkAlerts() {
+    if (!STATE.alerts.length) return;
+    STATE.alerts.forEach(a => {
+      const M = STATE.models[a.code];
+      if (!M) return;
+      const hit = a.cond === 'above' ? M.current >= a.target : M.current <= a.target;
+      if (hit && !a.fired) {
+        a.fired = true;
+        const msg = PRODUCTS[a.code].label + ' อยู่ที่ ' + money(M.current, 2) + ' บาท ' +
+                    (a.cond === 'above' ? 'แตะ/สูงกว่า' : 'ต่ำ/ต่ำกว่า') + 'เป้าหมาย ' + money(a.target, 2) + ' บาท';
+        triggerToast('แจ้งเตือนราคา', msg, true);
+        if (a.useBrowser && 'Notification' in window && Notification.permission === 'granted') {
+          try { new Notification('ParaTrend แจ้งเตือนราคา', { body: msg }); } catch (e) {}
+        }
+        renderAlertList();
+      }
+    });
+  }
+
+  function renderAlertList() {
+    const wrap = document.getElementById('alertListWrap');
+    const list = document.getElementById('alertList');
+    if (!STATE.alerts.length) { wrap.classList.add('hidden'); return; }
+    wrap.classList.remove('hidden');
+    list.innerHTML = STATE.alerts.map((a, i) =>
+      '<div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px]">' +
+        '<span class="font-semibold text-slate-700">' + PRODUCTS[a.code].label + ' ' +
+          (a.cond === 'above' ? '≥' : '≤') + ' ' + money(a.target, 2) + ' ฿ ' +
+          (a.fired ? '<span class="text-emerald-600 font-bold">• เกิดขึ้นแล้ว</span>' : '<span class="text-slate-400">• รอยู่</span>') + '</span>' +
+        '<button class="alert-del font-bold text-rose-500 hover:underline" data-i="' + i + '">ลบ</button>' +
+      '</div>').join('');
+    list.querySelectorAll('.alert-del').forEach(b => {
+      b.addEventListener('click', () => { STATE.alerts.splice(parseInt(b.getAttribute('data-i'), 10), 1); renderAlertList(); });
+    });
+  }
+
+  // ---------------------------------------------------------- EVENTS
+  function setActiveRubberType(type) {
+    if (!PRODUCTS[type]) return;
+    STATE.current = type;
+    renderSelectors();
+    renderPriceCards();
+    renderIndicators();
+    updateChart();
+    renderTargets();
+    renderBanner();
+    runProfitSimulator();
+    renderLocalBoard();
+    const sel = document.getElementById('simRubberType');
+    if (sel) sel.value = type;
+  }
+
+  function setupModal() {
+    const modal = document.getElementById('alertModal');
+    const openBtn = document.getElementById('openAlertModalBtn');
+    const rubberSelect = document.getElementById('modalRubberSelect');
+    const cond = document.getElementById('modalCondition');
+    const target = document.getElementById('modalTargetPriceInput');
+
+    function open() {
+      renderSelectors();
+      rubberSelect.value = STATE.current;
+      const M = STATE.models[STATE.current];
+      if (M) { target.value = (M.current + (M.changeAbs >= 0 ? 2 : -2)).toFixed(2); }
+      document.getElementById('modalHint').textContent = M
+        ? 'ราคาปัจจุบัน ' + money(M.current, 2) + ' ฿ • โมเดลมอง ' + (M.bestIdx + 1) + ' รอบข้างหน้าที ' + money(M.band[M.bestIdx].v, 2) + ' ฿'
+        : '';
+      renderAlertList();
+      if ('Notification' in window && Notification.permission === 'default') {
+        document.getElementById('browserPermNote').textContent = 'จะขออนุญาตเมื่อคุณบันทึกการแจ้งเตือน';
+      }
+      modal.classList.remove('hidden');
+      icons();
+    }
+    function close() { modal.classList.add('hidden'); }
+
+    openBtn.addEventListener('click', open);
+    document.getElementById('closeAlertModalBtn').addEventListener('click', close);
+    document.getElementById('cancelModalBtn').addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+    rubberSelect.addEventListener('change', () => {
+      const M = STATE.models[rubberSelect.value];
+      if (M) target.value = (M.current + (M.changeAbs >= 0 ? 2 : -2)).toFixed(2);
+    });
+
+    document.getElementById('saveAlertModalBtn').addEventListener('click', () => {
+      const v = parseFloat(target.value);
+      if (!isFinite(v)) { triggerToast('กรอกไม่ครบ', 'กรุณาระบุราคาเป้าหมาย', false); return; }
+      const useB = document.getElementById('alertUseBrowser').checked;
+      if (useB && 'Notification' in window && Notification.permission === 'default') {
+        try { Notification.requestPermission(); } catch (e) {}
+      }
+      STATE.alerts.push({ code: rubberSelect.value, cond: cond.value, target: v, useBrowser: useB, fired: false });
+      triggerToast('บันทึกการแจ้งเตือนแล้ว', 'ระบบจะตรวจเมื่อคุณกด "อัปเดตข้อมูล" (' + PRODUCTS[rubberSelect.value].label + ' ' + (cond.value === 'above' ? '≥' : '≤') + ' ' + money(v, 2) + ' ฿)', true);
+      renderAlertList();
+      checkAlerts();
+    });
+  }
+
+  function setupEventListeners() {
+    document.getElementById('northProvinceSelect').innerHTML = NORTH_POINTS.map((p, i) => '<option value="' + i + '">' + p[0] + '</option>').join('');
+    document.getElementById('northProvinceSelect').addEventListener('change', loadNorthWeather);
+    loadNorthWeather();
+    document.getElementById('closePngPreview').addEventListener('click', () => {
+      document.getElementById('pngPreviewModal').classList.add('hidden');
+      document.getElementById('pngPreviewImage').removeAttribute('src');
+      if (pngPreviewUrl) URL.revokeObjectURL(pngPreviewUrl);
+      pngPreviewUrl = null; pngShareFile = null;
+    });
+    document.getElementById('sharePngButton').addEventListener('click', async () => {
+      if (!pngShareFile) return;
+      try { await navigator.share({ files: [pngShareFile], title: 'ParaTrend ราคายางพารา' }); }
+      catch (error) { if (error.name !== 'AbortError') document.getElementById('pngSaveHint').textContent = 'แชร์ไม่ได้บนเบราว์เซอร์นี้ กรุณากดดาวน์โหลด หรือกดค้างที่ภาพเพื่อบันทึก'; }
+    });
+    document.getElementById('exportPricePngBtn').addEventListener('click', exportPricePng);
+    document.getElementById('rubberPriceCardsContainer').addEventListener('click', e => {
+      const card = e.target.closest('.rubber-select-card');
+      if (card) setActiveRubberType(card.getAttribute('data-type'));
+    });
+    document.getElementById('chartTabs').addEventListener('click', e => {
+      const btn = e.target.closest('.chart-tab-btn');
+      if (btn) setActiveRubberType(btn.getAttribute('data-chart-type'));
+    });
+    document.getElementById('toggleConfidenceBandBtn').addEventListener('click', () => {
+      STATE.showBand = !STATE.showBand;
+      document.getElementById('bandToggleText').textContent = STATE.showBand ? 'ซ่อนกรอบความผันผวน' : 'แสดงกรอบความผันผวน';
+      updateChart();
+    });
+    document.getElementById('simRubberType').addEventListener('change', e => setActiveRubberType(e.target.value));
+    document.getElementById('simHorizon').addEventListener('change', runProfitSimulator);
+    document.getElementById('simWeightInput').addEventListener('input', runProfitSimulator);
+    document.getElementById('simDrcInput').addEventListener('input', runProfitSimulator);
+
+    document.querySelectorAll('.sim-preset-weight').forEach(b => b.addEventListener('click', () => {
+      document.getElementById('simWeightInput').value = b.getAttribute('data-w'); runProfitSimulator();
+    }));
+    document.querySelectorAll('.sim-preset-drc').forEach(b => b.addEventListener('click', () => {
+      document.getElementById('simDrcInput').value = b.getAttribute('data-drc'); runProfitSimulator();
+    }));
+
+    document.getElementById('marketSearchInput').addEventListener('input', renderLocalBoard);
+    document.getElementById('regionFilterPills').addEventListener('click', e => {
+      const btn = e.target.closest('.region-pill');
+      if (!btn) return;
+      activeRegion = btn.getAttribute('data-region');
+      renderLocalBoard();
+    });
+
+    document.getElementById('refreshDataBtn').addEventListener('click', () => loadAll(true));
+  }
+
+  // ---------------------------------------------------------- INIT / SCREEN LOCK
+  // Client-side PIN is a convenience screen lock, not server authentication.
+  let appStarted = false;
+  function startUnlockedApp() {
+    if (appStarted) return;
+    appStarted = true;
+    icons();
+    if (typeof Chart === 'undefined' || !window.tailwind) {
+      document.getElementById('libWarning').classList.remove('hidden');
+    }
+    useSnapshot();
+    recomputeAll();
+    renderAll();
+    setupModal();
+    setupEventListeners();
+    loadAll(false);
+  }
+
+  function attemptPinUnlock(value) {
+    if (!/^[0-9]{4}$/.test(value) || value !== '7984') return false;
+    document.getElementById('pinGate').hidden = true;
+    document.body.classList.remove('pin-locked');
+    startUnlockedApp();
+    return true;
+  }
+
+  window.addEventListener('load', function () {
+    const input = document.getElementById('pinInput');
+    input.addEventListener('input', () => { input.value = input.value.replace(/[^0-9]/g, '').slice(0, 4); });
+    document.getElementById('pinForm').addEventListener('submit', event => {
+      event.preventDefault();
+      if (!attemptPinUnlock(input.value)) {
+        document.getElementById('pinError').textContent = 'รหัส PIN ไม่ถูกต้อง กรุณาลองใหม่';
+        input.value = ''; input.focus();
+      } else { input.value = ''; }
+    });
+    input.focus();
+  });
+  </script>
+</body>
+</html>
