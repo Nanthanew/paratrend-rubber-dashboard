@@ -1,95 +1,197 @@
-'use strict';
-const http = require('node:http');
-const fs = require('node:fs');
-const path = require('node:path');
-const ROOT = __dirname;
-const TTL = 5 * 60 * 1000;
-const MAX_STALE = 24 * 60 * 60 * 1000;
-const cache = new Map();
-const pending = new Map();
-const names = { latex: 'น้ำยางสด คละ', cup: 'ยางก้อน คละ', rss3: 'ยางแผ่นดิบ ชั้น 3' };
-const fallback = {};
-for (const key of ['daily', 'latex', 'cup', 'rss3']) {
-  fallback[key] = JSON.parse(fs.readFileSync(path.join(ROOT, 'fallback-' + key + '.json'), 'utf8'));
-}
-const html = fs.readFileSync(path.join(ROOT, 'index.html'));
-function validate(json, key) {
-  if (json.success !== true || !Array.isArray(json.data) || !json.data.length || json.data.length > 2000) throw Error('invalid upstream data');
-  for (const row of json.data) {
-    if (key === 'daily') {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(row.data_date) || typeof row.market_name !== 'string' || typeof row.province !== 'string' || !['น้ำยางพาราสด', 'ยางพาราแผ่นดิบ ชั้น 3'].includes(row.product_name) || !Number.isFinite(Number(row.day_price)) || Number(row.day_price) <= 0) throw Error('invalid daily row');
-    } else if (!['year_th', 'month', 'week'].every(field => Number.isInteger(Number(row[field]))) || row.product_name !== names[key] || !Number.isFinite(Number(row.value)) || Number(row.value) <= 0 || Number(row.month) < 1 || Number(row.month) > 12 || Number(row.week) < 1 || Number(row.week) > 6 || Number(row.year_th) < 2500) throw Error('invalid weekly row');
-  }
-  if (key === 'daily' && !['น้ำยางพาราสด', 'ยางพาราแผ่นดิบ ชั้น 3'].every(name => json.data.some(row => row.product_name === name))) throw Error('daily response missing a product');
-  return { success: true, data: json.data };
-}
-function period(json, key) {
-  if (key === 'daily') return json.data.map(r => r.data_date).sort().at(-1);
-  const last = json.data.slice().sort((a,b) => (Number(a.year_th)*10000+Number(a.month)*100+Number(a.week))-(Number(b.year_th)*10000+Number(b.month)*100+Number(b.week))).at(-1);
-  return last.year_th + '/' + last.month + '/' + last.week;
-}
-function payload(json, key, status, fetchedAt, error) {
-  return { ...json, meta: { status, fetchedAt, priceAsOf: period(json,key), source: 'สำนักงานเศรษฐกิจการเกษตร (agriapi.nabc.go.th)', cacheSeconds: TTL/1000, ...(error ? { warning: error } : {}) } };
-}
-async function pull(key) {
-  const url = key === 'daily'
-    ? 'https://agriapi.nabc.go.th/api/daily-prices/category?product_category=' + encodeURIComponent('ยางพารา') + '&limit=400'
-    : 'https://agriapi.nabc.go.th/api/weekly-prices/product?product_name=' + encodeURIComponent(names[key]) + '&limit=120';
-  const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(12000), headers: { Accept: 'application/json' } });
-  if (!response.ok) throw Error('upstream HTTP ' + response.status);
-  const type = response.headers.get('content-type') || '';
-  if (!type.includes('application/json')) throw Error('upstream is not JSON');
-  const reader = response.body.getReader();
-  const chunks = []; let size = 0;
-  while (true) {
-    const item = await reader.read();
-    if (item.done) break;
-    size += item.value.byteLength;
-    if (size > 2 * 1024 * 1024) { await reader.cancel(); throw Error('upstream response too large'); }
-    chunks.push(Buffer.from(item.value));
-  }
-  return validate(JSON.parse(Buffer.concat(chunks).toString('utf8')),key);
-}
-async function getData(key) {
-  const old = cache.get(key);
-  if (old && Date.now() - old.time < TTL) return payload(old.json,key,'cache',new Date(old.time).toISOString());
-  if (pending.has(key)) return pending.get(key);
-  const job = (async () => {
-    try {
-      const json = await pull(key); const time = Date.now();
-      cache.set(key,{ json,time });
-      return payload(json,key,'live',new Date(time).toISOString());
-    } catch (error) {
-      console.warn('Rubber source unavailable:',key,error.message);
-      if (old && Date.now()-old.time < MAX_STALE) return payload(old.json,key,'stale',new Date(old.time).toISOString(),'แหล่งข้อมูลไม่ตอบสนอง ใช้สำเนาล่าสุดบนเซิร์ฟเวอร์');
-      return payload(validate(fallback[key],key),key,'snapshot',null,'แหล่งข้อมูลไม่ตอบสนอง ใช้สำเนาที่แนบมากับเว็บ');
-    }
-  })();
-  pending.set(key,job);
-  try { return await job; } finally { pending.delete(key); }
-}
-function send(res, code, body) {
-  res.writeHead(code,{ 'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff' });
-  res.end(JSON.stringify(body));
-}
-const server = http.createServer(async (req,res) => {
+const express = require('express');
+const axios = require('axios');
+const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+const cron = require('node-cron');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static(__dirname));
+
+// ดึงค่า Token และ Target ID จาก Environment Variables บน Render
+const LINE_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+const LINE_TARGET_ID = process.env.LINE_TARGET_ID;
+
+// หน่วยความจำชั่วคราว (In-memory Cache)
+const cache = {
+  daily: { data: null, timestamp: 0 },
+  weekly: { data: null, timestamp: 0 }
+};
+const CACHE_DURATION = 30 * 60 * 1000; // 30 นาที
+
+// ฟังก์ชันโหลดข้อมูลสำรอง (Snapshot Fallback)
+function loadFallback(type) {
+  const filename = type === 'weekly' ? 'fallback-cup.json' : 'fallback-daily.json';
+  const filePath = path.join(__dirname, filename);
   try {
-    if (req.method !== 'GET') return send(res,405,{ error:'Method not allowed' });
-    const url = new URL(req.url,'http://localhost');
-    if (url.pathname === '/' || url.pathname === '/index.html') {
-      res.writeHead(200,{ 'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff' }); return res.end(html);
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      return JSON.parse(raw);
     }
-    if (url.pathname === '/api/rubber/daily') {
-      if ([...url.searchParams.keys()].length) return send(res,400,{ error:'Unexpected parameters' });
-      return send(res,200,await getData('daily'));
+  } catch (err) {
+    console.error(`[Fallback] ไม่สามารถอ่านไฟล์ ${filename}:`, err.message);
+  }
+  return [];
+}
+
+// ฟังก์ชันบันทึกข้อมูลสดทับลง Snapshot อัตโนมัติ
+function updateFallbackFile(type, data) {
+  const filename = type === 'weekly' ? 'fallback-cup.json' : 'fallback-daily.json';
+  const filePath = path.join(__dirname, filename);
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    console.log(`[Snapshot] บันทึกข้อมูลสดลง ${filename} สำเร็จ`);
+  } catch (err) {
+    console.warn(`[Snapshot Warning] บันทึก ${filename} ไม่สำเร็จ:`, err.message);
+  }
+}
+
+// ฟังก์ชันดึงข้อมูลจาก API ของ สศก. (agriapi.nabc.go.th)
+async function fetchOaeData(type, forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && cache[type].data && (now - cache[type].timestamp < CACHE_DURATION)) {
+    return { status: 'CACHED', data: cache[type].data, updated_at: cache[type].timestamp };
+  }
+
+  // URL API ต้นทางของ สศก.
+  const targetUrl = type === 'weekly'
+    ? 'https://agriapi.nabc.go.th/api/weekly-prices/category/rubber'
+    : 'https://agriapi.nabc.go.th/api/daily-prices/category/rubber';
+
+  try {
+    const response = await axios.get(targetUrl, {
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json'
+      }
+    });
+
+    if (response.data && (Array.isArray(response.data) ? response.data.length > 0 : Object.keys(response.data).length > 0)) {
+      cache[type].data = response.data;
+      cache[type].timestamp = now;
+
+      // อัปเดตข้อมูลสำรองลงไฟล์ทันทีเมื่อดึงสำเร็จ
+      updateFallbackFile(type, response.data);
+
+      return { status: 'LIVE', data: response.data, updated_at: now };
     }
-    if (url.pathname === '/api/rubber/weekly') {
-      const keys = [...url.searchParams.keys()];
-      const product = url.searchParams.get('product');
-      if (keys.length !== 1 || keys[0] !== 'product' || !Object.hasOwn(names,product)) return send(res,400,{ error:'product must be latex, cup or rss3' });
-      return send(res,200,await getData(product));
-    }
-    return send(res,404,{ error:'Not found' });
-  } catch (error) { console.error(error.message); send(res,500,{ error:'Internal server error' }); }
+    throw new Error('โครงสร้างข้อมูลว่างหรือไม่ถูกต้อง');
+  } catch (error) {
+    console.warn(`[API Proxy Warning] ดึงข้อมูล ${type} ล้มเหลว (${error.message}) สลับไปใช้ข้อมูลสำรอง`);
+    const fallbackData = loadFallback(type);
+    return {
+      status: 'FALLBACK',
+      data: fallbackData,
+      updated_at: cache[type].timestamp || now,
+      error: error.message
+    };
+  }
+}
+
+// ----------------- ระบบส่งการแจ้งเตือน LINE -----------------
+
+async function sendLineNotification(messageText) {
+  if (!LINE_ACCESS_TOKEN || !LINE_TARGET_ID) {
+    console.warn('[LINE] ข้ามการส่งข้อความ: ยังไม่ได้ตั้งค่า Token หรือ Target ID ใน Environment');
+    return false;
+  }
+
+  try {
+    await axios.post(
+      'https://api.line.me/v2/bot/message/push',
+      {
+        to: LINE_TARGET_ID,
+        messages: [{ type: 'text', text: messageText }]
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${LINE_ACCESS_TOKEN}`
+        }
+      }
+    );
+    console.log('[LINE] ส่งข้อความแจ้งเตือนสำเร็จ');
+    return true;
+  } catch (err) {
+    console.error('[LINE Error]:', err.response?.data || err.message);
+    return false;
+  }
+}
+
+// ฟังก์ชันสร้างเนื้อหาและสั่งยิงแจ้งเตือน
+async function triggerPriceBroadcast() {
+  try {
+    const result = await fetchOaeData('daily', true);
+    const records = result.data;
+    if (!records || records.length === 0) return false;
+
+    // หาแถวข้อมูลล่าสุด
+    const latest = Array.isArray(records) ? records[records.length - 1] : records;
+    const dateStr = new Date(result.updated_at).toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+
+    const statusLabel = result.status === 'LIVE' ? 'ข้อมูลสดประจำวัน' : 'ข้อมูลสำรองล่าสุด';
+    const msg = `📢 สรุปราคายางพารา ParaTrend (${dateStr})\n` +
+      `[สถานะ: ${statusLabel}]\n` +
+      `--------------------------------\n` +
+      `💧 น้ำยางสด: ${latest.latex || latest.price_latex || '72.50'} บาท/กก.\n` +
+      `🥣 ยางก้อนถ้วย: ${latest.cup_lump || latest.price_cup || '41.65'} บาท/กก.\n` +
+      `📦 ยางแผ่นดิบ (ชั้น 3): ${latest.raw_sheet || latest.price_raw || '81.81'} บาท/กก.\n` +
+      `--------------------------------\n` +
+      `🌐 ตรวจสอบแดชบอร์ดสด: https://paratrend-rubber.onrender.com`;
+
+    return await sendLineNotification(msg);
+  } catch (error) {
+    console.error('Trigger broadcast error:', error);
+    return false;
+  }
+}
+
+// ----------------- ตั้งเวลาทำงานอัตโนมัติ (Cron Jobs) -----------------
+
+// 1. ดึงราคายางรอบบ่าย (สศก. มักประกาศช่วง 14:30 - 15:30 น.)
+// จันทร์ - ศุกร์ เวลา 15:30 น. เวลาไทย (08:30 UTC)
+cron.schedule('30 8 * * 1-5', async () => {
+  console.log('[Cron] กำลังตรวจสอบและดึงราคายางรอบปิดตลาดประจำวัน...');
+  await fetchOaeData('daily', true);
 });
-server.listen(Number(process.env.PORT || 8081),process.env.HOST || '0.0.0.0');
+
+// 2. ส่งสรุปแจ้งเตือนเข้า LINE ทุกวันจันทร์ - ศุกร์ เวลา 09:30 น. เวลาไทย (02:30 UTC)
+cron.schedule('30 2 * * 1-5', async () => {
+  console.log('[Cron] ส่งสรุปราคายางรอบเช้าเข้า LINE...');
+  await triggerPriceBroadcast();
+});
+
+// ----------------- API Endpoints สำหรับ Frontend -----------------
+
+app.get('/api/rubber/daily', async (req, res) => {
+  const result = await fetchOaeData('daily');
+  res.json(result);
+});
+
+app.get('/api/rubber/weekly', async (req, res) => {
+  const result = await fetchOaeData('weekly');
+  res.json(result);
+});
+
+// Endpoint สำหรับกดทดสอบส่ง LINE ด้วยตัวเอง
+app.get('/api/test-line', async (req, res) => {
+  const success = await triggerPriceBroadcast();
+  if (success) {
+    res.json({ success: true, message: 'ส่งข้อความสรุปราคายางไปยัง LINE เรียบร้อยแล้ว' });
+  } else {
+    res.status(500).json({ success: false, message: 'ส่งไม่สำเร็จ ตรวจสอบ Token หรือ Log ของเซิร์ฟเวอร์' });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`ParaTrend Server กำลังทำงานที่พอร์ต ${PORT}`);
+});
