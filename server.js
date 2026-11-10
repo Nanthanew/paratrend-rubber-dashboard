@@ -57,11 +57,9 @@ async function fetchOaeData(type, forceRefresh = false) {
     return { status: 'CACHED', data: cache[type].data, updated_at: cache[type].timestamp };
   }
 
-  // URL API ต้นทางของ สศก.
   const targetUrl = type === 'weekly'
-    ? 'https://agriapi.nabc.go.th/api/weekly-prices/category/rubber'
-    : 'https://agriapi.nabc.go.th/api/daily-prices/category/rubber';
-
+    ? 'https://agriapi.nabc.go.th/api/weekly-prices?category=rubber'
+    : 'https://agriapi.nabc.go.th/api/daily-prices?category=ยางพารา';
   try {
     const response = await axios.get(targetUrl, {
       timeout: 10000,
