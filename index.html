@@ -1162,6 +1162,12 @@ const API = {
   if (clean.includes('ก้อน')) return 'cup';
   return null;
 }
+  }
+  if (clean.includes('น้ำยาง')) return 'latex';
+  if (clean.includes('แผ่นดิบ') || clean.includes('RSS')) return 'rss3';
+  if (clean.includes('ก้อน')) return 'cup';
+  return null;
+}
 
   function ingestDaily(rows) {
     const byProductDate = {};   // code -> date -> [prices]
