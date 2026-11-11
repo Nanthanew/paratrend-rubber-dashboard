@@ -2185,17 +2185,8 @@ window.PARATREND_SNAPSHOT = {
   }
 
   window.addEventListener('load', function () {
-    const input = document.getElementById('pinInput');
-    input.addEventListener('input', () => { input.value = input.value.replace(/[^0-9]/g, '').slice(0, 4); });
-    document.getElementById('pinForm').addEventListener('submit', event => {
-      event.preventDefault();
-      if (!attemptPinUnlock(input.value)) {
-        document.getElementById('pinError').textContent = 'รหัส PIN ไม่ถูกต้อง กรุณาลองใหม่';
-        input.value = ''; input.focus();
-      } else { input.value = ''; }
-    });
-    input.focus();
-  });
+  attemptPinUnlock('7984');
+});
   </script>
 </body>
 </html>
