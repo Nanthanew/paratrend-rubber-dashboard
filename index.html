@@ -632,7 +632,8 @@ window.PARATREND_SNAPSHOT = {
   ];
 
   // Same-origin backend routes; arbitrary external proxy URLs are not accepted.
-  const rubberMeta = { daily: null, latex: null, cup: null, rss3: null };
+ const rubberMeta = { daily: null, latex: null, cup: null, rss3: null };
+const API = {
   daily: 'https://paratrend-rubber.onrender.com/api/rubber/daily',
   weekly: name => 'https://paratrend-rubber.onrender.com/api/rubber/weekly?product=' + encodeURIComponent(
     name === 'น้ำยางสด คละ' ? 'latex' : name === 'ยางก้อน คละ' ? 'cup' : 'rss3'),
@@ -2160,25 +2161,43 @@ window.PARATREND_SNAPSHOT = {
 
   // ---------------------------------------------------------- INIT / SCREEN LOCK
   // Client-side PIN is a convenience screen lock, not server authentication.
-  let appStarted = false;
-  function startUnlockedApp() {
-    if (appStarted) return;
-    appStarted = true;
-    icons();
+ let appStarted = false;
+function startUnlockedApp() {
+  if (appStarted) return;
+  appStarted = true;
+  try { if (typeof icons === 'function') icons(); } catch (e) { console.error(e); }
+  try {
     if (typeof Chart === 'undefined' || !window.tailwind) {
-      document.getElementById('libWarning').classList.remove('hidden');
+      const warn = document.getElementById('libWarning');
+      if (warn) warn.classList.remove('hidden');
     }
-    useSnapshot();
-    recomputeAll();
-    renderAll();
-    setupModal();
-   function attemptPinUnlock(value) {
+  } catch (e) {}
+  try { if (typeof useSnapshot === 'function') useSnapshot(); } catch (e) { console.error(e); }
+  try { if (typeof recomputeAll === 'function') recomputeAll(); } catch (e) { console.error(e); }
+  try { if (typeof renderAll === 'function') renderAll(); } catch (e) { console.error(e); }
+  try { if (typeof setupModal === 'function') setupModal(); } catch (e) { console.error(e); }
+  try { if (typeof setupEventListeners === 'function') setupEventListeners(); } catch (e) { console.error(e); }
+  try { if (typeof loadAll === 'function') loadAll(false); } catch (e) { console.error(e); }
+}
+
+function attemptPinUnlock(value) {
   const gate = document.getElementById('pinGate');
-  if (gate) gate.hidden = true;
+  if (gate) {
+    gate.hidden = true;
+    gate.style.display = 'none';
+  }
   document.body.classList.remove('pin-locked');
   startUnlockedApp();
   return true;
 }
 
-// สั่งรันแอปและวาดกราฟทันทีที่เปิดหน้าเว็บโดยไม่ต้องรอ
-startUnlockedApp();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function () {
+    attemptPinUnlock('7984');
+  });
+} else {
+  attemptPinUnlock('7984');
+}
+</script>
+</body>
+</html>
