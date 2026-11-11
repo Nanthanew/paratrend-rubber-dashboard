@@ -177,7 +177,202 @@
         </button>
       </div>
     </section>
+<!-- 2.5 สมาคมยางพาราไทย (THE THAI RUBBER ASSOCIATION - TRA) -->
+    <section class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-200/80 relative overflow-hidden mt-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-emerald-700 text-white flex items-center justify-center font-bold text-sm">TRA</div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 class="text-sm sm:text-base font-bold text-slate-800">สมาคมยางพาราไทย ::: THE THAI RUBBER ASSOCIATION</h3>
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">
+                ● อัปเดตล่าสุด <span id="traDateBadge">11 พ.ย. 2569</span>
+              </span>
+            </div>
+            <p class="text-xs text-slate-500">ราคายางพาราในประเทศและราคาส่งออก (FOB ท่าเรือกรุงเทพ / สงขลา)</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <a href="http://www.thainr.com/th/?detail=pr-local" target="_blank" rel="noopener"
+             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium">
+            ราคาในประเทศ ↗
+          </a>
+          <a href="http://www.thainr.com/th/?detail=pr-fob" target="_blank" rel="noopener"
+             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold border border-emerald-200">
+            ราคาส่งออก FOB ↗
+          </a>
+        </div>
+      </div>
 
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="bg-slate-50/80 rounded-2xl p-4 border border-slate-200/70">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold text-slate-700 uppercase">🇹🇭 ราคาในประเทศ (Local Price)</span>
+            <span class="text-[11px] text-slate-400">หน่วย: บาท/กก.</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-white p-3 rounded-xl border border-slate-100">
+              <div class="text-xs text-slate-500">ยางแผ่นรมควัน ชั้น 3 (RSS 3)</div>
+              <div class="text-lg font-extrabold text-slate-800 mt-1" id="traLocalRss3">85.80</div>
+            </div>
+            <div class="bg-white p-3 rounded-xl border border-slate-100">
+              <div class="text-xs text-slate-500">น้ำยางสด (Field Latex)</div>
+              <div class="text-lg font-extrabold text-slate-800 mt-1" id="traLocalLatex">73.50</div>
+            </div>
+            <div class="bg-white p-3 rounded-xl border border-slate-100">
+              <div class="text-xs text-slate-500">ยางแผ่นดิบคุณภาพดี (USS)</div>
+              <div class="text-lg font-extrabold text-slate-800 mt-1" id="traLocalUss">82.65</div>
+            </div>
+            <div class="bg-white p-3 rounded-xl border border-slate-100">
+              <div class="text-xs text-slate-500">ยางก้อนถ้วย (DRC 100%)</div>
+              <div class="text-lg font-extrabold text-slate-800 mt-1" id="traLocalCup">61.50</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-emerald-50/40 rounded-2xl p-4 border border-emerald-200/60">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold text-emerald-900 uppercase">🚢 ราคาส่งออก เอฟ.โอ.บี. (FOB)</span>
+            <span class="text-[11px] text-emerald-700">บาท/กก. (USD/ตัน)</span>
+          </div>
+          <div class="space-y-2.5">
+            <div class="bg-white p-3 rounded-xl border border-emerald-100 flex items-center justify-between">
+              <div class="text-xs font-semibold text-slate-700">ยางแผ่นรมควัน ชั้น 3 (FOB RSS 3)</div>
+              <div class="text-right">
+                <span id="traFobRss3" class="text-sm font-extrabold text-emerald-800">89.20 ฿</span>
+                <span class="text-[11px] text-slate-400 ml-1">($2,665)</span>
+              </div>
+            </div>
+            <div class="bg-white p-3 rounded-xl border border-emerald-100 flex items-center justify-between">
+              <div class="text-xs font-semibold text-slate-700">ยางแท่งมาตรฐาน (FOB STR 20)</div>
+              <div class="text-right">
+                <span id="traFobStr20" class="text-sm font-extrabold text-emerald-800">76.40 ฿</span>
+                <span class="text-[11px] text-slate-400 ml-1">($2,285)</span>
+              </div>
+            </div>
+            <div class="bg-white p-3 rounded-xl border border-emerald-100 flex items-center justify-between">
+              <div class="text-xs font-semibold text-slate-700">น้ำยางข้น 60% (FOB Latex 60%)</div>
+              <div class="text-right">
+                <span id="traFobLatex60" class="text-sm font-extrabold text-emerald-800">56.80 ฿</span>
+                <span class="text-[11px] text-slate-400 ml-1">($1,695)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2.6 สมาคมน้ำยางข้นไทย (THE THAI LATEX ASSOCIATION - TLA) -->
+    <section class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-sky-200/80 relative overflow-hidden mt-4 mb-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-sky-700 text-white flex items-center justify-center font-bold text-sm">TLA</div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 class="text-sm sm:text-base font-bold text-slate-800">สมาคมน้ำยางข้นไทย ::: THE THAI LATEX ASSOCIATION</h3>
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-100 text-sky-800">
+                ● อัปเดต: <span id="tlaLatestDateBadge">11 พฤศจิกายน 2569</span>
+              </span>
+            </div>
+            <p class="text-xs text-slate-500">ราคาซื้อน้ำยางสด ณ หน้าโรงงาน (บาท/กก.) และราคาขายน้ำยางข้น F.O.B. กรุงเทพ (Bulk)</p>
+          </div>
+        </div>
+        <a href="https://www.tlalatex.org/th/price" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-semibold border border-sky-200">
+          ดูตาราง tlalatex.org/th/price ↗
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div class="lg:col-span-5 space-y-3 bg-slate-50 rounded-2xl p-4 border border-slate-200/70">
+          <div class="bg-white p-3.5 rounded-xl border border-sky-100 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-semibold text-slate-700">ราคาซื้อน้ำยางสด ณ หน้าโรงงาน</div>
+              <div class="text-[11px] text-slate-400">Fresh Field Latex (บาท/กก.)</div>
+            </div>
+            <div class="text-right">
+              <div class="text-xl font-extrabold text-sky-800"><span id="tlaFreshPrice">76.80</span> ฿</div>
+              <div class="text-[11px] text-emerald-700">เฉลี่ยเดือนนี้: <span id="tlaAvgFresh">81.25</span> ฿</div>
+            </div>
+          </div>
+          <div class="bg-white p-3.5 rounded-xl border border-sky-100 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-semibold text-slate-700">น้ำยางข้น F.O.B. กรุงเทพ (Bulk)</div>
+              <div class="text-[11px] text-slate-400">F.O.B. Bangkok (USD/MT)</div>
+            </div>
+            <div class="text-right">
+              <div class="text-xl font-extrabold text-slate-800">$<span id="tlaFobPrice">1,800.00</span></div>
+              <div class="text-[11px] text-slate-500">เฉลี่ยเดือนนี้: $<span id="tlaAvgFob">1,845.00</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+          <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200/70 text-xs font-bold text-slate-700">
+            📅 ราคาที่ประกาศในแต่ละวัน (ดึงไปคำนวณในแอปอัตโนมัติ)
+          </div>
+          <div class="overflow-x-auto max-h-52 overflow-y-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-100 text-slate-600 sticky top-0">
+                <tr>
+                  <th class="py-2 px-3">วัน/เดือน/ปี</th>
+                  <th class="py-2 px-3 text-right">น้ำยางสด หน้าโรงงาน (บาท/กก.)</th>
+                  <th class="py-2 px-3 text-right">F.O.B. กรุงเทพ (USD/MT)</th>
+                </tr>
+              </thead>
+              <tbody id="tlaDailyTableBody" class="divide-y divide-slate-100 text-slate-700">
+                <tr><td class="py-2 px-3">11 พฤศจิกายน 2569</td><td class="py-2 px-3 text-right font-bold text-sky-700">76.80</td><td class="py-2 px-3 text-right">1,800.00</td></tr>
+                <tr><td class="py-2 px-3">10 พฤศจิกายน 2569</td><td class="py-2 px-3 text-right font-bold text-sky-700">76.80</td><td class="py-2 px-3 text-right">1,800.00</td></tr>
+                <tr><td class="py-2 px-3">7 พฤศจิกายน 2569</td><td class="py-2 px-3 text-right font-bold text-sky-700">80.00</td><td class="py-2 px-3 text-right">1,830.00</td></tr>
+                <tr><td class="py-2 px-3">6 พฤศจิกายน 2569</td><td class="py-2 px-3 text-right font-bold text-sky-700">80.00</td><td class="py-2 px-3 text-right">1,830.00</td></tr>
+                <tr><td class="py-2 px-3">3 พฤศจิกายน 2569</td><td class="py-2 px-3 text-right font-bold text-sky-700">84.00</td><td class="py-2 px-3 text-right">-</td></tr>
+                <tr><td class="py-2 px-3">2 พฤศจิกายน 2569</td><td class="py-2 px-3 text-right font-bold text-sky-700">86.00</td><td class="py-2 px-3 text-right">1,890.00</td></tr>
+                <tr><td class="py-2 px-3">1 พฤศจิกายน 2569</td><td class="py-2 px-3 text-right font-bold text-sky-700">86.00</td><td class="py-2 px-3 text-right">1,900.00</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        (function loadAssocWidgets() {
+          const setTxt = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.textContent = v; };
+          fetch('/api/rubber/tra').then(r => r.json()).then(d => {
+            if (!d || !d.local) return;
+            if (d.updated_date) setTxt('traDateBadge', d.updated_date);
+            if (d.local.rss3?.price) setTxt('traLocalRss3', Number(d.local.rss3.price).toFixed(2));
+            if (d.local.latex?.price) setTxt('traLocalLatex', Number(d.local.latex.price).toFixed(2));
+            if (d.local.uss?.price) setTxt('traLocalUss', Number(d.local.uss.price).toFixed(2));
+            if (d.local.cup?.price) setTxt('traLocalCup', Number(d.local.cup.price).toFixed(2));
+            if (d.fob?.rss3_bkk?.thb) setTxt('traFobRss3', Number(d.fob.rss3_bkk.thb).toFixed(2) + ' ฿');
+            if (d.fob?.str20?.thb) setTxt('traFobStr20', Number(d.fob.str20.thb).toFixed(2) + ' ฿');
+            if (d.fob?.latex_60?.thb) setTxt('traFobLatex60', Number(d.fob.latex_60.thb).toFixed(2) + ' ฿');
+          }).catch(() => {});
+
+          fetch('/api/rubber/tla').then(r => r.json()).then(d => {
+            if (!d || !Array.isArray(d.daily_table)) return;
+            if (d.latest) {
+              setTxt('tlaLatestDateBadge', d.latest.date_th);
+              if (d.latest.fresh_latex) setTxt('tlaFreshPrice', Number(d.latest.fresh_latex).toFixed(2));
+              if (d.latest.fob_bulk_usd) setTxt('tlaFobPrice', Number(d.latest.fob_bulk_usd).toLocaleString('en-US', { minimumFractionDigits: 2 }));
+            }
+            if (d.average) {
+              if (d.average.fresh_latex) setTxt('tlaAvgFresh', Number(d.average.fresh_latex).toFixed(2));
+              if (d.average.fob_bulk_usd) setTxt('tlaAvgFob', Number(d.average.fob_bulk_usd).toLocaleString('en-US', { minimumFractionDigits: 2 }));
+            }
+            const tbody = document.getElementById('tlaDailyTableBody');
+            if (tbody && d.daily_table.length > 0) {
+              tbody.innerHTML = d.daily_table.map(row => `
+                <tr class="hover:bg-sky-50/60">
+                  <td class="py-2 px-3 font-medium">${row.date_th || row.data_date}</td>
+                  <td class="py-2 px-3 text-right font-bold text-sky-700">${row.fresh_latex != null ? Number(row.fresh_latex).toFixed(2) : '-'}</td>
+                  <td class="py-2 px-3 text-right">${row.fob_bulk_usd != null ? Number(row.fob_bulk_usd).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}</td>
+                </tr>`).join('');
+            }
+          }).catch(() => {});
+        })();
+      </script>
+    </section>
     <!-- 3. Leading Indicators -->
     <section class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4">
