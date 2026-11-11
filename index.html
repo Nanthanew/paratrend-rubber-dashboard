@@ -1150,11 +1150,18 @@ const API = {
   }
 
   function productCodeFromDailyName(name) {
-    for (const id of PRODUCT_ORDER) {
-      if (PRODUCTS[id].dailyName && PRODUCTS[id].dailyName === name) return id;
+  const clean = String(name || '').trim();
+  for (const id of PRODUCT_ORDER) {
+    const p = PRODUCTS[id];
+    if (clean.includes(p.label) || (p.dailyName && clean.includes(p.dailyName))) {
+      return id;
     }
-    return null;
   }
+  if (clean.includes('น้ำยาง')) return 'latex';
+  if (clean.includes('แผ่นดิบ') || clean.includes('RSS')) return 'rss3';
+  if (clean.includes('ก้อน')) return 'cup';
+  return null;
+}
 
   function ingestDaily(rows) {
     const byProductDate = {};   // code -> date -> [prices]
