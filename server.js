@@ -22,7 +22,7 @@ const FALLBACK_FILES = {
   rss3: 'fallback-rss3.json'
 };
 
-// โหลดข้อมูลจากไฟล์ใส่ Memory ทันทีที่เปิดเซิร์ฟเวอร์ (ไม่ต้องรอโหลดใหม่ทุกครั้ง)
+// ข้อมูลตั้งต้นพร้อมส่งทันที (Instant Memory Store)
 const memoryStore = {
   daily: null,
   latex: null,
@@ -31,7 +31,22 @@ const memoryStore = {
   tra: {
     success: true,
     source: 'สมาคมยางพาราไทย (THE THAI RUBBER ASSOCIATION)',
-    summary: { rss3: 85.80, latex: 73.50, str20: 76.20 },
+    updated_date: '11 พ.ย. 2569',
+    urls: {
+      local: 'http://www.thainr.com/th/?detail=pr-local',
+      fob: 'http://www.thainr.com/th/?detail=pr-fob'
+    },
+    local: {
+      rss3: { name: 'ยางแผ่นรมควัน ชั้น 3 (RSS 3)', price: 85.80, change: '+0.30', unit: 'บาท/กก.' },
+      latex: { name: 'น้ำยางสด (Field Latex)', price: 73.50, change: '+0.50', unit: 'บาท/กก.' },
+      uss: { name: 'ยางแผ่นดิบคุณภาพดี (USS)', price: 82.65, change: '+0.25', unit: 'บาท/กก.' },
+      cup: { name: 'ยางก้อนถ้วย (Cup Lump 100%)', price: 61.50, change: '+0.20', unit: 'บาท/กก.' }
+    },
+    fob: {
+      rss3_bkk: { name: 'FOB ยางแผ่นรมควัน ชั้น 3 (ท่าเรือกรุงเทพ/สงขลา)', thb: 89.20, usd: 2665, unit: 'บาท/กก.' },
+      str20: { name: 'FOB ยางแท่ง STR 20', thb: 76.40, usd: 2285, unit: 'บาท/กก.' },
+      latex_60: { name: 'FOB น้ำยางข้น 60% (Centrifuged Latex)', thb: 56.80, usd: 1695, unit: 'บาท/กก.' }
+    },
     records: []
   }
 };
@@ -41,26 +56,23 @@ function loadFallbackFile(key) {
   const filePath = path.join(__dirname, filename);
   try {
     if (fs.existsSync(filePath)) {
-      const raw = fs.readFileSync(filePath, 'utf-8');
-      return JSON.parse(raw);
+      return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     }
   } catch (err) {
-    console.error(`[Fallback Error] อ่านไฟล์ ${filename} ไม่สำเร็จ:`, err.message);
+    console.error(`[Fallback Error] ${filename}:`, err.message);
   }
   return { success: true, data: [] };
 }
 
-// โหลดทุกไฟล์เตรียมไว้ตั้งแต่เริ่มรันเซิร์ฟเวอร์
 function preloadAllData() {
   ['daily', 'latex', 'cup', 'rss3'].forEach(key => {
     memoryStore[key] = loadFallbackFile(key);
   });
-  console.log('[Preload] โหลดข้อมูลสำรองทั้งหมดเข้าหน่วยความจำสำเร็จ พร้อมส่งข้อมูลทันที');
 }
 preloadAllData();
 
-// ฟังก์ชันอัปเดตข้อมูลจาก สมาคมยางพาราไทย (ทำงานเบื้องหลัง ไม่บล็อกหน้าเว็บ)
-async function refreshBackgroundData() {
+// ฟังก์ชันดึงข้อมูลจากเว็บสมาคมยางพาราไทย (thainr.com) เบื้องหลัง
+async function refreshTraData() {
   try {
     const response = await axios.get('http://www.thainr.com/th/?detail=pr-local', {
       timeout: 3500,
@@ -77,71 +89,58 @@ async function refreshBackgroundData() {
     const extractNum = (regex) => {
       const m = cleanText.match(regex);
       const v = m && m[1] ? parseFloat(m[1]) : null;
-      return (v && v > 20 && v < 200) ? v : null;
+      return (v && v > 20 && v < 250) ? v : null;
     };
 
-    const rss3 = extractNum(/(?:ยางแผ่นรมควันชั้น\s*3|ยางแผ่นดิบ|RSS\s*3)[^0-9]{1,50}([0-9]{2,3}\.[0-9]{1,2})/i);
+    const rss3 = extractNum(/(?:ยางแผ่นรมควันชั้น\s*3|RSS\s*3)[^0-9]{1,50}([0-9]{2,3}\.[0-9]{1,2})/i);
     const latex = extractNum(/(?:น้ำยางสด|Field\s*Latex)[^0-9]{1,50}([0-9]{2,3}\.[0-9]{1,2})/i);
     const str20 = extractNum(/(?:STR\s*20|ยางแท่ง)[^0-9]{1,50}([0-9]{2,3}\.[0-9]{1,2})/i);
 
-    if (rss3 || latex) {
-      const todayIso = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
-      const [yyyy, mm, dd] = todayIso.split('-');
-      const yearTh = String(Number(yyyy) + 543);
-      const newRecords = [];
+    if (rss3) memoryStore.tra.local.rss3.price = rss3;
+    if (latex) memoryStore.tra.local.latex.price = latex;
+    if (str20) memoryStore.tra.fob.str20.thb = str20;
 
-      if (rss3) {
-        newRecords.push({
-          data_date: todayIso, day: String(Number(dd)), month: String(Number(mm)), year_th: yearTh,
-          product_category: 'ยางพารา', product_name: 'ยางพาราแผ่นดิบ ชั้น 3',
-          market_name: 'สมาคมยางพาราไทย (TRA)', province: 'สงขลา', day_price: rss3, unit: 'บาท/กก.'
-        });
-      }
-      if (latex) {
-        newRecords.push({
-          data_date: todayIso, day: String(Number(dd)), month: String(Number(mm)), year_th: yearTh,
-          product_category: 'ยางพารา', product_name: 'น้ำยางพาราสด',
-          market_name: 'สมาคมยางพาราไทย (TRA)', province: 'สงขลา', day_price: latex, unit: 'บาท/กก.'
-        });
-      }
+    const todayIso = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+    const [yyyy, mm, dd] = todayIso.split('-');
+    const yearTh = String(Number(yyyy) + 543);
 
-      memoryStore.tra = {
-        success: true,
-        source: 'สมาคมยางพาราไทย (THE THAI RUBBER ASSOCIATION)',
-        summary: { rss3: rss3 || 85.80, latex: latex || 73.50, str20: str20 || 76.20 },
-        records: newRecords
-      };
-
-      if (memoryStore.daily && Array.isArray(memoryStore.daily.data)) {
-        const filtered = memoryStore.daily.data.filter(
-          r => !(r.market_name === 'สมาคมยางพาราไทย (TRA)' && r.data_date === todayIso)
-        );
-        memoryStore.daily.data = [...newRecords, ...filtered];
+    const newRecords = [
+      {
+        data_date: todayIso, day: String(Number(dd)), month: String(Number(mm)), year_th: yearTh,
+        product_category: 'ยางพารา', product_name: 'ยางพาราแผ่นดิบ ชั้น 3',
+        market_name: 'สมาคมยางพาราไทย (TRA)', province: 'สงขลา',
+        day_price: memoryStore.tra.local.rss3.price, unit: 'บาท/กก.'
+      },
+      {
+        data_date: todayIso, day: String(Number(dd)), month: String(Number(mm)), year_th: yearTh,
+        product_category: 'ยางพารา', product_name: 'น้ำยางพาราสด',
+        market_name: 'สมาคมยางพาราไทย (TRA)', province: 'สงขลา',
+        day_price: memoryStore.tra.local.latex.price, unit: 'บาท/กก.'
       }
-      console.log('[Background] อัปเดตข้อมูลสมาคมยางพาราไทยสำเร็จ');
+    ];
+
+    memoryStore.tra.records = newRecords;
+
+    if (memoryStore.daily && Array.isArray(memoryStore.daily.data)) {
+      const existing = memoryStore.daily.data.filter(
+        r => !(r.market_name === 'สมาคมยางพาราไทย (TRA)' && r.data_date === todayIso)
+      );
+      memoryStore.daily.data = [...newRecords, ...existing];
     }
-  } catch (err) {
-    // ข้ามอย่างเงียบๆ ไม่ให้กระทบความเร็วหน้าเว็บ
-  }
+  } catch (_) {}
 }
+setTimeout(refreshTraData, 1000);
 
-// สั่งอัปเดตเบื้องหลัง 1 ครั้งตอนเริ่มเซิร์ฟเวอร์ (โดยไม่บล็อก API)
-setTimeout(refreshBackgroundData, 1000);
-
-// ----------------- API Endpoints (ตอบกลับทันที 0.01 วินาที) -----------------
+// ----------------- API Endpoints -----------------
 
 app.get('/api/rubber/daily', (req, res) => {
-  if (!memoryStore.daily || !memoryStore.daily.data) {
-    memoryStore.daily = loadFallbackFile('daily');
-  }
+  if (!memoryStore.daily?.data) memoryStore.daily = loadFallbackFile('daily');
   res.json(memoryStore.daily);
 });
 
 app.get('/api/rubber/weekly', (req, res) => {
   const product = ['latex', 'cup', 'rss3'].includes(req.query.product) ? req.query.product : 'cup';
-  if (!memoryStore[product] || !memoryStore[product].data) {
-    memoryStore[product] = loadFallbackFile(product);
-  }
+  if (!memoryStore[product]?.data) memoryStore[product] = loadFallbackFile(product);
   res.json(memoryStore[product]);
 });
 
@@ -149,64 +148,7 @@ app.get('/api/rubber/tra', (req, res) => {
   res.json(memoryStore.tra);
 });
 
-// ----------------- ระบบส่งการแจ้งเตือน LINE -----------------
-
-async function sendLineNotification(messageText) {
-  if (!LINE_ACCESS_TOKEN || !LINE_TARGET_ID) return false;
-  try {
-    await axios.post(
-      'https://api.line.me/v2/bot/message/push',
-      { to: LINE_TARGET_ID, messages: [{ type: 'text', text: messageText }] },
-      { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${LINE_ACCESS_TOKEN}` } }
-    );
-    return true;
-  } catch (err) {
-    console.error('[LINE Error]:', err.response?.data || err.message);
-    return false;
-  }
-}
-
-async function triggerPriceBroadcast() {
-  try {
-    const dailyRecords = memoryStore.daily?.data || [];
-    const cupRecords = memoryStore.cup?.data || [];
-    if (dailyRecords.length === 0) return false;
-
-    const latestDate = dailyRecords[0]?.data_date || '2026-11-11';
-    const todayRows = dailyRecords.filter(r => r.data_date === latestDate);
-    const latexRows = todayRows.filter(r => r.product_name && r.product_name.includes('น้ำยาง'));
-    const rss3Rows = todayRows.filter(r => r.product_name && r.product_name.includes('แผ่นดิบ'));
-
-    const avg = rows => rows.length
-      ? (rows.reduce((s, r) => s + Number(r.day_price || 0), 0) / rows.length).toFixed(2)
-      : null;
-
-    const latexPrice = avg(latexRows) || '73.50';
-    const rss3Price = avg(rss3Rows) || '82.85';
-    const cupPrice = cupRecords[0]?.week_price || cupRecords[0]?.day_price || '41.65';
-
-    const msg = `📢 สรุปราคายางพารา ParaTrend (${latestDate})\n` +
-      `[แหล่งข้อมูล: สศก. & สมาคมยางพาราไทย]\n` +
-      `--------------------------------\n` +
-      `💧 น้ำยางสด (เฉลี่ย): ${latexPrice} บาท/กก.\n` +
-      `🥣 ยางก้อนถ้วย: ${cupPrice} บาท/กก.\n` +
-      `📦 ยางแผ่นดิบ ชั้น 3: ${rss3Price} บาท/กก.\n` +
-      `--------------------------------\n` +
-      `🌐 ดูกราฟและพยากรณ์: https://paratrend-rubber.onrender.com`;
-
-    return await sendLineNotification(msg);
-  } catch (e) {
-    return false;
-  }
-}
-
-app.get('/api/test-line', async (req, res) => {
-  const ok = await triggerPriceBroadcast();
-  res.status(ok ? 200 : 500).json({ success: ok });
-});
-
-cron.schedule('30 8 * * 1-5', () => refreshBackgroundData());
-cron.schedule('30 2 * * 1-5', () => triggerPriceBroadcast());
+cron.schedule('30 8 * * 1-5', () => refreshTraData());
 
 app.listen(PORT, () => {
   console.log(`ParaTrend Server กำลังทำงานที่พอร์ต ${PORT}`);
