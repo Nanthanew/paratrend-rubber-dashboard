@@ -1170,13 +1170,20 @@ const API = {
 }
 
   function ingestDaily(rows) {
-    const byProductDate = {};   // code -> date -> [prices]
-    const hist = {};            // "code|market" -> {province, pts}
+    const byProductDate = {};   
+    const hist = {};              
     const dateSet = {};
 
     rows.forEach(r => {
-      const code = productCodeFromDailyName(r.product_name);
+      const name = String(r.product_name || '').trim();
+      let code = productCodeFromDailyName(name);
+      if (!code) {
+        if (name.includes('น้ำยาง')) code = 'latex';
+        else if (name.includes('แผ่นดิบ') || name.includes('RSS')) code = 'rss3';
+        else if (name.includes('ก้อน')) code = 'cup';
+      }
       if (!code) return;
+
       const price = Number(r.day_price);
       if (!isFinite(price) || price <= 0) return;
 
@@ -1188,6 +1195,36 @@ const API = {
       if (!hist[key]) hist[key] = { code: code, market: r.market_name, province: r.province, pts: [] };
       hist[key].pts.push([r.data_date, price]);
     });
+
+    const dates = Object.keys(dateSet).sort();
+    let latest = null;
+    PRODUCT_ORDER.forEach(id => {
+      const map = byProductDate[id] || {};
+      STATE.products[id].daily = dates.filter(d => map[d]).map(d => {
+        const v = median(map[d]);
+        return [d, Math.round(v * 100) / 100, map[d].length];
+      });
+      if (STATE.products[id].daily.length) latest = STATE.products[id].daily[STATE.products[id].daily.length - 1][0];
+    });
+
+    Object.keys(hist).forEach(k => {
+      hist[k].pts.sort((a, b) => a[0] < b[0] ? -1 : 1);
+      STATE.marketHist[k] = hist[k];
+    });
+
+    if (latest) {
+      STATE.marketRows = [];
+      Object.keys(STATE.marketHist).forEach(k => {
+        const h = STATE.marketHist[k];
+        const lastPt = h.pts[h.pts.length - 1];
+        if (lastPt && lastPt[0] === latest) {
+          STATE.marketRows.push({ code: h.code, market: h.market, province: h.province, price: lastPt[1] });
+        }
+      });
+      STATE.asOf.price = latest;
+    }
+    return !!latest;
+  }
 
     const dates = Object.keys(dateSet).sort();
     let latest = null;
