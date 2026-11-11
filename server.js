@@ -26,28 +26,19 @@ const FALLBACK_FILES = {
 const BUILTIN_DAILY_RECORDS = [
   {"data_date":"2026-11-11","day":"11","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"ยางพาราแผ่นดิบ ชั้น 3","market_name":"ตลาดกลางยางพารา สงขลา","province":"สงขลา","day_price":81.95,"unit":"บาท/กก."},
   {"data_date":"2026-11-11","day":"11","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"ยางพาราแผ่นดิบ ชั้น 3","market_name":"ตลาดกลางยางพารา สุราษฎร์ธานี","province":"สุราษฎร์ธานี","day_price":82.65,"unit":"บาท/กก."},
+  {"data_date":"2026-11-11","day":"11","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"น้ำยางพาราสด","market_name":"สมาคมน้ำยางข้นไทย (TLA - หน้าโรงงาน)","province":"สงขลา","day_price":76.80,"unit":"บาท/กก."},
   {"data_date":"2026-11-11","day":"11","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"น้ำยางพาราสด","market_name":"บริษัท ที.ที.ลาเท็กซ์แอนด์โปรดักส์ จำกัด","province":"นครศรีธรรมราช","day_price":72.50,"unit":"บาท/กก."},
   {"data_date":"2026-11-11","day":"11","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"น้ำยางพาราสด","market_name":"บริษัท ไทยรับเบอร์ลาเทกซ์กรุ๊ป จำกัด","province":"ระยอง","day_price":74.50,"unit":"บาท/กก."},
   {"data_date":"2026-11-10","day":"10","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"ยางพาราแผ่นดิบ ชั้น 3","market_name":"ตลาดกลางยางพารา สงขลา","province":"สงขลา","day_price":81.60,"unit":"บาท/กก."},
   {"data_date":"2026-11-10","day":"10","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"ยางพาราแผ่นดิบ ชั้น 3","market_name":"ตลาดกลางยางพารา สุราษฎร์ธานี","province":"สุราษฎร์ธานี","day_price":82.50,"unit":"บาท/กก."},
+  {"data_date":"2026-11-10","day":"10","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"น้ำยางพาราสด","market_name":"สมาคมน้ำยางข้นไทย (TLA - หน้าโรงงาน)","province":"สงขลา","day_price":76.80,"unit":"บาท/กก."},
   {"data_date":"2026-11-10","day":"10","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"น้ำยางพาราสด","market_name":"บริษัท ที.ที.ลาเท็กซ์แอนด์โปรดักส์ จำกัด","province":"นครศรีธรรมราช","day_price":72.00,"unit":"บาท/กก."},
   {"data_date":"2026-11-10","day":"10","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"น้ำยางพาราสด","market_name":"บริษัท ไทยรับเบอร์ลาเทกซ์กรุ๊ป จำกัด","province":"ระยอง","day_price":74.00,"unit":"บาท/กก."},
   {"data_date":"2026-11-09","day":"9","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"ยางพาราแผ่นดิบ ชั้น 3","market_name":"ตลาดกลางยางพารา ระยอง","province":"ระยอง","day_price":85.50,"unit":"บาท/กก."},
   {"data_date":"2026-11-09","day":"9","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"น้ำยางพาราสด","market_name":"บริษัท ที.ที.ลาเท็กซ์แอนด์โปรดักส์ จำกัด","province":"นครศรีธรรมราช","day_price":71.00,"unit":"บาท/กก."},
   {"data_date":"2026-11-09","day":"9","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"น้ำยางพาราสด","market_name":"บริษัท ไทยรับเบอร์ลาเทกซ์กรุ๊ป จำกัด","province":"ระยอง","day_price":74.00,"unit":"บาท/กก."},
   {"data_date":"2026-11-09","day":"9","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"ยางพาราแผ่นดิบ ชั้น 3","market_name":"ตลาดกลางยางพารา สุราษฎร์ธานี","province":"สุราษฎร์ธานี","day_price":82.40,"unit":"บาท/กก."},
-  {"data_date":"2026-11-09","day":"9","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"ยางพาราแผ่นดิบ ชั้น 3","market_name":"ตลาดกลางยางพารา สงขลา","province":"สงขลา","day_price":81.22,"unit":"บาท/กก."},
-  {"data_date":"2026-11-06","day":"6","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"ยางพาราแผ่นดิบ ชั้น 3","market_name":"ตลาดกลางยางพารา สงขลา","province":"สงขลา","day_price":82.88,"unit":"บาท/กก."},
-  {"data_date":"2026-11-06","day":"6","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"น้ำยางพาราสด","market_name":"บริษัท ไทยรับเบอร์ลาเทกซ์กรุ๊ป จำกัด","province":"ระยอง","day_price":78.00,"unit":"บาท/กก."},
-  {"data_date":"2026-11-06","day":"6","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"น้ำยางพาราสด","market_name":"บริษัท ที.ที.ลาเท็กซ์แอนด์โปรดักส์ จำกัด","province":"นครศรีธรรมราช","day_price":75.00,"unit":"บาท/กก."},
-  {"data_date":"2026-11-05","day":"5","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"ยางพาราแผ่นดิบ ชั้น 3","market_name":"ตลาดกลางยางพารา สงขลา","province":"สงขลา","day_price":83.10,"unit":"บาท/กก."},
-  {"data_date":"2026-11-05","day":"5","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"น้ำยางพาราสด","market_name":"บริษัท ไทยรับเบอร์ลาเทกซ์กรุ๊ป จำกัด","province":"ระยอง","day_price":76.00,"unit":"บาท/กก."},
-  {"data_date":"2026-11-04","day":"4","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"ยางพาราแผ่นดิบ ชั้น 3","market_name":"ตลาดกลางยางพารา สุราษฎร์ธานี","province":"สุราษฎร์ธานี","day_price":83.39,"unit":"บาท/กก."},
-  {"data_date":"2026-11-04","day":"4","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"น้ำยางพาราสด","market_name":"บริษัท ที.ที.ลาเท็กซ์แอนด์โปรดักส์ จำกัด","province":"นครศรีธรรมราช","day_price":76.00,"unit":"บาท/กก."},
-  {"data_date":"2026-11-03","day":"3","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"ยางพาราแผ่นดิบ ชั้น 3","market_name":"ตลาดกลางยางพารา สงขลา","province":"สงขลา","day_price":83.45,"unit":"บาท/กก."},
-  {"data_date":"2026-11-03","day":"3","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"น้ำยางพาราสด","market_name":"บริษัท ที.ที.ลาเท็กซ์แอนด์โปรดักส์ จำกัด","province":"นครศรีธรรมราช","day_price":77.00,"unit":"บาท/กก."},
-  {"data_date":"2026-11-02","day":"2","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"ยางพาราแผ่นดิบ ชั้น 3","market_name":"ตลาดกลางยางพารา สงขลา","province":"สงขลา","day_price":83.90,"unit":"บาท/กก."},
-  {"data_date":"2026-11-02","day":"2","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"น้ำยางพาราสด","market_name":"บริษัท ที.ที.ลาเท็กซ์แอนด์โปรดักส์ จำกัด","province":"นครศรีธรรมราช","day_price":78.00,"unit":"บาท/กก."}
+  {"data_date":"2026-11-09","day":"9","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"ยางพาราแผ่นดิบ ชั้น 3","market_name":"ตลาดกลางยางพารา สงขลา","province":"สงขลา","day_price":81.22,"unit":"บาท/กก."}
 ];
 
 const memoryStore = {
@@ -73,6 +64,36 @@ const memoryStore = {
   }
 };
 
+// ข้อมูลตั้งต้น สมาคมน้ำยางข้นไทย (TLA - tlalatex.org/th/price)
+let tlaStore = {
+  success: true,
+  source: 'สมาคมน้ำยางข้นไทย (THE THAI LATEX ASSOCIATION)',
+  url: 'https://www.tlalatex.org/th/price',
+  latest: { date_th: '11 พฤศจิกายน 2569', fresh_latex: 76.80, fob_bulk_usd: 1800.00 },
+  average: { fresh_latex: 81.25, fob_bulk_usd: 1845.00 },
+  daily_table: [
+    { data_date: '2026-11-11', date_th: '11 พฤศจิกายน 2569', fresh_latex: 76.80, fob_bulk_usd: 1800.00 },
+    { data_date: '2026-11-10', date_th: '10 พฤศจิกายน 2569', fresh_latex: 76.80, fob_bulk_usd: 1800.00 },
+    { data_date: '2026-11-07', date_th: '7 พฤศจิกายน 2569', fresh_latex: 80.00, fob_bulk_usd: 1830.00 },
+    { data_date: '2026-11-06', date_th: '6 พฤศจิกายน 2569', fresh_latex: 80.00, fob_bulk_usd: 1830.00 },
+    { data_date: '2026-11-03', date_th: '3 พฤศจิกายน 2569', fresh_latex: 84.00, fob_bulk_usd: null },
+    { data_date: '2026-11-02', date_th: '2 พฤศจิกายน 2569', fresh_latex: 86.00, fob_bulk_usd: 1890.00 },
+    { data_date: '2026-11-01', date_th: '1 พฤศจิกายน 2569', fresh_latex: 86.00, fob_bulk_usd: 1900.00 }
+  ]
+};
+
+function loadTlaFile() {
+  try {
+    const tlaPath = path.join(__dirname, 'fallback-tla.json');
+    if (fs.existsSync(tlaPath)) {
+      const parsed = JSON.parse(fs.readFileSync(tlaPath, 'utf-8'));
+      if (parsed && Array.isArray(parsed.daily_table) && parsed.daily_table.length > 0) {
+        tlaStore = parsed;
+      }
+    }
+  } catch (_) {}
+}
+
 function loadFallbackFile(key) {
   const filename = FALLBACK_FILES[key] || 'fallback-daily.json';
   const filePath = path.join(__dirname, filename);
@@ -81,12 +102,6 @@ function loadFallbackFile(key) {
       const raw = fs.readFileSync(filePath, 'utf-8').trim();
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.data) && parsed.data.length > 0) {
-        if (key === 'daily') {
-          // ผสานข้อมูลวันที่ 10-11 พ.ย. 2569 ไว้ด้านบนสุดเสมอ
-          const latestDates = new Set(['2026-11-11', '2026-11-10']);
-          const olderRows = parsed.data.filter(r => !latestDates.has(r.data_date));
-          parsed.data = [...BUILTIN_DAILY_RECORDS.filter(r => latestDates.has(r.data_date)), ...olderRows];
-        }
         return parsed;
       }
     }
@@ -94,7 +109,6 @@ function loadFallbackFile(key) {
     console.warn(`[Fallback Repair] ไฟล์ ${filename} มีปัญหา ใช้ข้อมูลสำรองในตัวแทน:`, err.message);
   }
 
-  // ถ้าไฟล์ JSON พังหรือว่าง ให้ส่งข้อมูล Built-in กลับไปทันที การ์ดจะได้ไม่ว่าง
   if (key === 'daily') {
     return {
       success: true,
@@ -106,6 +120,7 @@ function loadFallbackFile(key) {
 }
 
 function preloadAllData() {
+  loadTlaFile();
   ['daily', 'latex', 'cup', 'rss3'].forEach(key => {
     memoryStore[key] = loadFallbackFile(key);
   });
@@ -113,6 +128,8 @@ function preloadAllData() {
 preloadAllData();
 
 // ----------------- API Endpoints -----------------
+
+app.get('/healthz', (req, res) => res.status(200).send('OK'));
 
 app.get('/api/rubber/daily', (req, res) => {
   if (!memoryStore.daily?.data || memoryStore.daily.data.length === 0) {
@@ -131,6 +148,12 @@ app.get('/api/rubber/weekly', (req, res) => {
 
 app.get('/api/rubber/tra', (req, res) => {
   res.json(memoryStore.tra);
+});
+
+// Endpoint ส่วนที่ 2: ส่งข้อมูลสมาคมน้ำยางข้นไทย (TLA)
+app.get('/api/rubber/tla', (req, res) => {
+  loadTlaFile();
+  res.json(tlaStore);
 });
 
 app.listen(PORT, () => {
