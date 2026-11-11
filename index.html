@@ -51,7 +51,7 @@
     details > summary::-webkit-details-marker { display: none; }
   </style>
 </head>
-<body class="pin-locked min-h-full flex flex-col text-slate-800 bg-[#F4F6F9]">
+<body class="min-h-full flex flex-col text-slate-800 bg-[#F4F6F9]">
   <style>
     body.pin-locked > :not(#pinGate):not(script):not(style) { display: none !important; }
     #pinGate { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; background: #061838; font-family: Prompt, Tahoma, sans-serif; }
@@ -60,7 +60,7 @@
     #pinInput { box-sizing: border-box; width: 100%; margin: 20px 0 12px; padding: 14px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 26px; text-align: center; letter-spacing: 12px; }
     .pin-submit { width: 100%; padding: 14px; border: none; border-radius: 12px; background: #0d9488; color: white; font: 600 16px Prompt, Tahoma, sans-serif; cursor: pointer; }
   </style>
-  <div id="pinGate">
+<div id="pinGate" hidden style="display:none !important;">
     <form id="pinForm" class="pin-panel">
       <h1 style="margin:0;color:#0B2A5B;font-size:30px">ParaTrend</h1>
       <p style="color:#64748b;margin:12px 0">กรอกรหัส PIN 4 หลักเพื่อเข้าใช้งาน</p>
