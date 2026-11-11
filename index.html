@@ -171,7 +171,7 @@
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="rubberPriceCardsContainer"></div>
       <div class="flex flex-wrap items-center justify-end gap-3 mt-4">
-        <span class="text-xs text-slate-500">ส่งออกรวมทั้ง 3 ประเภทในภาพเดียว • เปรียบ('ข้อมูล ณ ' + new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) + ' เวลา ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.')</span>
+       <span class="text-xs text-slate-500">ส่งออกรวมทั้ง 3 ประเภทในภาพเดียว • เปรียบเทียบรอบล่าสุดที่มีราคา</span>
         <button id="exportPricePngBtn" type="button" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-800 hover:bg-brand-900 text-white text-xs font-semibold shadow-sm transition-colors">
           <i data-lucide="image-down" class="w-4 h-4"></i> ส่งออกราคาเป็น PNG
         </button>
@@ -1700,7 +1700,7 @@ const API = {
       if (maxWidth) while (ctx.measureText(value).width > maxWidth && size > 16) {
         size--; ctx.font = (weight || 400) + ' ' + size + 'px Prompt, Tahoma, sans-serif';
       }
-      ctx.fillStyle = fill; ctx.fillText(value, x, y);
+      ctx.fillStyle = fill; ctx.'เทียบรอบล่าสุดที่มีราคา'(value, x, y);
     }
     ctx.fillStyle = '#f1f5f9'; ctx.fillRect(0, 0, 1200, 900);
     box(36, 36, 1128, 828, 32, '#ffffff');
@@ -1744,7 +1744,7 @@ const API = {
       while (maxWidth && context.measureText(value).width > maxWidth && size > 16) {
         size--; context.font = (weight || 400) + ' ' + size + 'px Prompt, Tahoma, sans-serif';
       }
-      context.fillStyle = fill; context.fillText(value, x, y);
+      context.fillStyle = fill; context.('ข้อมูล ณ ' + new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) + ' • ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.')(value, x, y);
     }
     function period(observation, daily) {
       if (daily) return fmtThaiDate(observation.date, true);
