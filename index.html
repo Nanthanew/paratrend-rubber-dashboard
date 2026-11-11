@@ -2172,21 +2172,13 @@ window.PARATREND_SNAPSHOT = {
     recomputeAll();
     renderAll();
     setupModal();
-    setupEventListeners();
-    loadAll(false);
-  }
+   function attemptPinUnlock(value) {
+  const gate = document.getElementById('pinGate');
+  if (gate) gate.hidden = true;
+  document.body.classList.remove('pin-locked');
+  startUnlockedApp();
+  return true;
+}
 
-  function attemptPinUnlock(value) {
-    if (!/^[0-9]{4}$/.test(value) || value !== '7984') return false;
-    document.getElementById('pinGate').hidden = true;
-    document.body.classList.remove('pin-locked');
-    startUnlockedApp();
-    return true;
-  }
-
-  window.addEventListener('load', function () {
-  attemptPinUnlock('7984');
-});
-  </script>
-</body>
-</html>
+// สั่งรันแอปและวาดกราฟทันทีที่เปิดหน้าเว็บโดยไม่ต้องรอ
+startUnlockedApp();
