@@ -171,7 +171,7 @@
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="rubberPriceCardsContainer"></div>
       <div class="flex flex-wrap items-center justify-end gap-3 mt-4">
-        <span class="text-xs text-slate-500">ส่งออกรวมทั้ง 3 ประเภทในภาพเดียว • เปรียบเทียบรอบล่าสุดที่มีราคา</span>
+        <span class="text-xs text-slate-500">ส่งออกรวมทั้ง 3 ประเภทในภาพเดียว • เปรียบ('ข้อมูล ณ ' + new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) + ' เวลา ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.')</span>
         <button id="exportPricePngBtn" type="button" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-800 hover:bg-brand-900 text-white text-xs font-semibold shadow-sm transition-colors">
           <i data-lucide="image-down" class="w-4 h-4"></i> ส่งออกราคาเป็น PNG
         </button>
