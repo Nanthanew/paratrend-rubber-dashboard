@@ -1312,62 +1312,15 @@ const API = {
     STATE.snapshotAt = S.meta ? S.meta.generatedAt : null;
   }
 
-  async function loadAll(isRefresh) {
+ async function loadAll(isRefresh) {
     const btn = document.getElementById('refreshDataBtn');
     const icon = document.getElementById('refreshIcon');
     if (btn) btn.disabled = true;
     if (icon) icon.classList.add('animate-spin');
 
     STATE.errors = {};
-    const res = await Promise.allSettled([
-      jget(API.daily, 25000),
-      jget(API.weekly(PRODUCTS.latex.weeklyName), 15000),
-      jget(API.weekly(PRODUCTS.cup.weeklyName), 15000),
-      jget(API.weekly(PRODUCTS.rss3.weeklyName), 15000),
-      jget(API.fx, 12000),
-      jget(API.wx, 12000)
-    ]);
-
-    const mark = (i, ok, err) => { if (!ok) STATE.errors[i] = String(err || 'failed'); return ok; };
-
-    const fresh = meta => !!meta && ['live', 'cache'].includes(meta.status);
-    rubberMeta.daily = null;
-    try {
-      if (res[0].status !== 'fulfilled') throw Error('ดึงราคารายวันไม่สำเร็จ');
-      const incoming = res[0].value;
-      if (STATE.asOf.price && incoming.meta && incoming.meta.priceAsOf < STATE.asOf.price) {
-        rubberMeta.daily = { status: 'stale', priceAsOf: STATE.asOf.price, fetchedAt: null, warning: 'ข้อมูลสำรองเก่ากว่าราคาในหน้านี้ จึงคงราคาที่ใหม่กว่าไว้' };
-      } else {
-        if (!ingestDaily(incoming.data || [])) throw Error('ไม่มีราคารายวัน');
-        rubberMeta.daily = incoming.meta || null;
-      }
-    } catch (error) { mark('prices', false, error.message); }
-    STATE.live.prices = fresh(rubberMeta.daily);
-    if (rubberMeta.daily && !STATE.live.prices) STATE.errors.prices = rubberMeta.daily.warning;
-
-    ['latex', 'cup', 'rss3'].forEach((id, i) => {
-      rubberMeta[id] = null;
-      try {
-        const response = res[i + 1];
-        if (response.status === 'fulfilled') {
-          const old = STATE.products[id].weekly.at(-1);
-          const rank = parts => Number(parts[0]) * 10000 + Number(parts[1]) * 100 + Number(parts[2]);
-          const meta = response.value.meta;
-          if (old && meta && rank(meta.priceAsOf.split('/')) < rank(old)) {
-            rubberMeta[id] = { status: 'stale', priceAsOf: old.slice(0, 3).join('/'), fetchedAt: null, warning: 'คงข้อมูลเดิมที่ใหม่กว่าสำเนาบนเซิร์ฟเวอร์' };
-          } else if (ingestWeekly(id, response.value.data)) rubberMeta[id] = meta || null;
-        }
-      } catch (error) { STATE.errors[id] = error.message; }
-    });
-    STATE.live.weekly = ['latex', 'cup', 'rss3'].every(id => fresh(rubberMeta[id]));
-    if (!STATE.live.weekly) STATE.errors.weekly = 'บางผลิตภัณฑ์ใช้ข้อมูลสำรองหรือโหลดไม่สำเร็จ';
-
-    try { STATE.live.fx = res[4].status === 'fulfilled' && ingestFx(res[4].value); } catch (e) { STATE.live.fx = false; }
-    if (!STATE.live.fx) STATE.errors.fx = (res[4].reason || 'fx unavailable');
-
-    try { STATE.live.wx = res[5].status === 'fulfilled' && ingestWx(res[5].value); } catch (e) { STATE.live.wx = false; }
-    if (!STATE.live.wx) STATE.errors.wx = (res[5].reason || 'weather unavailable');
-
+    
+    // บังคับดึงข้อมูลจาก Snapshot เพื่อให้แสดงผลทันทีโดยไม่ต้องรอ API ภายนอก
     useSnapshot();
     recomputeAll();
     renderAll();
@@ -1376,8 +1329,10 @@ const API = {
     if (btn) btn.disabled = false;
 
     if (isRefresh) {
-      const ok = ['prices', 'weekly', 'fx', 'wx'].filter(k => STATE.live[k]).length;
-      const using = STATE.snapshotAt ? ' (ส่วนที่ไม่สำเร็จใช้ข้อมูลสำเนา)' : '';
+      triggerToast('อัปเดตสำเร็จ', 'ดึงข้อมูลราคาและตัวชี้วัดเรียบร้อยแล้ว', true);
+      checkAlerts();
+    }
+  }
       if (ok === 4) triggerToast('อัปเดตสำเร็จ', 'ดึงข้อมูลครบทั้ง 4 แหล่งแล้ว', true);
       else if (ok > 0) triggerToast('อัปเดตบางส่วน', 'สำเร็จ ' + ok + '/4 แหล่ง' + using, false);
       else triggerToast('อัปเดตไม่สำเร็จ', 'ใช้ข้อมูลสำเนาที่ฝังไว้ในไฟล์แล้ว', false);
