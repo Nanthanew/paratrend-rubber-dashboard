@@ -135,7 +135,20 @@ app.get('/api/rubber/daily', (req, res) => {
   if (!memoryStore.daily?.data || memoryStore.daily.data.length === 0) {
     memoryStore.daily = loadFallbackFile('daily');
   }
-  res.json(memoryStore.daily);
+  const normalizedData = (memoryStore.daily.data || []).map(row => {
+    const name = String(row.product_name || '');
+    let cleanName = name;
+    if (name.includes('น้ำยาง')) cleanName = 'น้ำยางสด คละ';
+    else if (name.includes('แผ่นดิบ')) cleanName = 'ยางแผ่นดิบ ชั้น 3';
+    else if (name.includes('ก้อน')) cleanName = 'ยางก้อน คละ';
+    return { ...row, product_name: cleanName };
+  });
+
+  res.json({
+    ...memoryStore.daily,
+    success: true,
+    data: normalizedData
+  });
 });
 
 app.get('/api/rubber/weekly', (req, res) => {
