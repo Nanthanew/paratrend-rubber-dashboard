@@ -19,13 +19,23 @@ const LINE_TARGET_ID = process.env.LINE_TARGET_ID;
 // หน่วยความจำชั่วคราว (In-memory Cache)
 const cache = {
   daily: { data: null, timestamp: 0 },
-  weekly: { data: null, timestamp: 0 }
+  latex: { data: null, timestamp: 0 },
+  cup: { data: null, timestamp: 0 },
+  rss3: { data: null, timestamp: 0 }
 };
 const CACHE_DURATION = 30 * 60 * 1000; // 30 นาที
 
+// แผนผังไฟล์สำรองแยกตามประเภทสินค้า
+const FALLBACK_FILES = {
+  daily: 'fallback-daily.json',
+  latex: 'fallback-latex.json',
+  cup: 'fallback-cup.json',
+  rss3: 'fallback-rss3.json'
+};
+
 // ฟังก์ชันโหลดข้อมูลสำรอง (Snapshot Fallback)
-function loadFallback(type) {
-  const filename = type === 'weekly' ? 'fallback-cup.json' : 'fallback-daily.json';
+function loadFallback(key) {
+  const filename = FALLBACK_FILES[key] || 'fallback-daily.json';
   const filePath = path.join(__dirname, filename);
   try {
     if (fs.existsSync(filePath)) {
@@ -35,34 +45,41 @@ function loadFallback(type) {
   } catch (err) {
     console.error(`[Fallback] ไม่สามารถอ่านไฟล์ ${filename}:`, err.message);
   }
-  return [];
+  return { success: true, data: [] };
 }
 
 // ฟังก์ชันบันทึกข้อมูลสดทับลง Snapshot อัตโนมัติ
-function updateFallbackFile(type, data) {
-  const filename = type === 'weekly' ? 'fallback-cup.json' : 'fallback-daily.json';
+function updateFallbackFile(key, data) {
+  const filename = FALLBACK_FILES[key] || 'fallback-daily.json';
   const filePath = path.join(__dirname, filename);
   try {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    fs.writeFileSync(filePath, JSON.stringify(data), 'utf-8');
     console.log(`[Snapshot] บันทึกข้อมูลสดลง ${filename} สำเร็จ`);
   } catch (err) {
     console.warn(`[Snapshot Warning] บันทึก ${filename} ไม่สำเร็จ:`, err.message);
   }
 }
 
-// ฟังก์ชันดึงข้อมูลจาก API ของ สศก. (agriapi.nabc.go.th)
-async function fetchOaeData(type, forceRefresh = false) {
+// ฟังก์ชันดึงข้อมูลพร้อมสลับเข้าไฟล์สำรองทันทีหากถูกบล็อก (Timeout 2.5 วินาที)
+async function fetchOaeData(key, forceRefresh = false) {
   const now = Date.now();
-  if (!forceRefresh && cache[type].data && (now - cache[type].timestamp < CACHE_DURATION)) {
-    return { status: 'CACHED', data: cache[type].data, updated_at: cache[type].timestamp };
+  if (!forceRefresh && cache[key]?.data && (now - cache[key].timestamp < CACHE_DURATION)) {
+    return { status: 'CACHED', payload: cache[key].data, updated_at: cache[key].timestamp };
   }
 
-  const targetUrl = type === 'weekly'
-    ? 'https://agriapi.nabc.go.th/api/weekly-prices?category=rubber'
-    : 'https://agriapi.nabc.go.th/api/daily-prices?category=ยางพารา';
+  const productMap = {
+    latex: 'น้ำยางสด คละ',
+    cup: 'ยางก้อน คละ',
+    rss3: 'ยางแผ่นดิบ ชั้น 3'
+  };
+
+  const targetUrl = key === 'daily'
+    ? 'https://agriapi.nabc.go.th/api/daily-prices/category?product_category=' + encodeURIComponent('ยางพารา')
+    : 'https://agriapi.nabc.go.th/api/weekly-prices/product?product_name=' + encodeURIComponent(productMap[key] || 'ยางก้อน คละ');
+
   try {
     const response = await axios.get(targetUrl, {
-      timeout: 10000,
+      timeout: 2500, // รอสูงสุด 2.5 วินาที ถ้าไม่ได้ให้ใช้ไฟล์สำรองทันที
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Accept': 'application/json, text/plain, */*',
@@ -72,23 +89,20 @@ async function fetchOaeData(type, forceRefresh = false) {
       }
     });
 
-    if (response.data && (Array.isArray(response.data) ? response.data.length > 0 : Object.keys(response.data).length > 0)) {
-      cache[type].data = response.data;
-      cache[type].timestamp = now;
-
-      // อัปเดตข้อมูลสำรองลงไฟล์ทันทีเมื่อดึงสำเร็จ
-      updateFallbackFile(type, response.data);
-
-      return { status: 'LIVE', data: response.data, updated_at: now };
+    if (response.data && response.data.data && response.data.data.length > 0) {
+      cache[key] = { data: response.data, timestamp: now };
+      updateFallbackFile(key, response.data);
+      return { status: 'LIVE', payload: response.data, updated_at: now };
     }
     throw new Error('โครงสร้างข้อมูลว่างหรือไม่ถูกต้อง');
   } catch (error) {
-    console.warn(`[API Proxy Warning] ดึงข้อมูล ${type} ล้มเหลว (${error.message}) สลับไปใช้ข้อมูลสำรอง`);
-    const fallbackData = loadFallback(type);
+    console.warn(`[API Fallback] สลับใช้ไฟล์สำรองสำหรับ ${key} (${error.message})`);
+    const fallbackData = loadFallback(key);
+    cache[key] = { data: fallbackData, timestamp: now };
     return {
       status: 'FALLBACK',
-      data: fallbackData,
-      updated_at: cache[type].timestamp || now,
+      payload: fallbackData,
+      updated_at: now,
       error: error.message
     };
   }
@@ -124,30 +138,39 @@ async function sendLineNotification(messageText) {
   }
 }
 
-// ฟังก์ชันสร้างเนื้อหาและสั่งยิงแจ้งเตือน
+// ฟังก์ชันสร้างเนื้อหาและสั่งยิงแจ้งเตือนจากข้อมูลจริงในระบบ
 async function triggerPriceBroadcast() {
   try {
-    const result = await fetchOaeData('daily', true);
-    const records = result.data;
-    if (!records || records.length === 0) return false;
+    const dailyRes = await fetchOaeData('daily', true);
+    const cupRes = await fetchOaeData('cup', false);
 
-    // หาแถวข้อมูลล่าสุด
-    const latest = Array.isArray(records) ? records[records.length - 1] : records;
-    const dateStr = new Date(result.updated_at).toLocaleDateString('th-TH', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    const dailyRecords = dailyRes.payload?.data || [];
+    const cupRecords = cupRes.payload?.data || [];
+    if (dailyRecords.length === 0) return false;
 
-    const statusLabel = result.status === 'LIVE' ? 'ข้อมูลสดประจำวัน' : 'ข้อมูลสำรองล่าสุด';
-    const msg = `📢 สรุปราคายางพารา ParaTrend (${dateStr})\n` +
+    const latestDate = dailyRecords[0]?.data_date || 'ล่าสุด';
+    const todayRows = dailyRecords.filter(r => r.data_date === latestDate);
+
+    const latexRows = todayRows.filter(r => r.product_name && r.product_name.includes('น้ำยาง'));
+    const rss3Rows = todayRows.filter(r => r.product_name && r.product_name.includes('แผ่นดิบ'));
+
+    const avgPrice = rows => rows.length
+      ? (rows.reduce((sum, r) => sum + Number(r.day_price || 0), 0) / rows.length).toFixed(2)
+      : null;
+
+    const latexPrice = avgPrice(latexRows) || '73.50';
+    const rss3Price = avgPrice(rss3Rows) || '82.85';
+    const cupPrice = cupRecords[0]?.week_price || cupRecords[0]?.day_price || '41.65';
+
+    const statusLabel = dailyRes.status === 'LIVE' ? 'ข้อมูลสดประจำวัน' : 'ข้อมูลอัปเดตล่าสุด';
+    const msg = `📢 สรุปราคายางพารา ParaTrend (${latestDate})\n` +
       `[สถานะ: ${statusLabel}]\n` +
       `--------------------------------\n` +
-      `💧 น้ำยางสด: ${latest.latex || latest.price_latex || '72.50'} บาท/กก.\n` +
-      `🥣 ยางก้อนถ้วย: ${latest.cup_lump || latest.price_cup || '41.65'} บาท/กก.\n` +
-      `📦 ยางแผ่นดิบ (ชั้น 3): ${latest.raw_sheet || latest.price_raw || '81.81'} บาท/กก.\n` +
+      `💧 น้ำยางสด (เฉลี่ย): ${latexPrice} บาท/กก.\n` +
+      `🥣 ยางก้อนถ้วย: ${cupPrice} บาท/กก.\n` +
+      `📦 ยางแผ่นดิบ ชั้น 3 (เฉลี่ย): ${rss3Price} บาท/กก.\n` +
       `--------------------------------\n` +
-      `🌐 ตรวจสอบแดชบอร์ดสด: https://paratrend-rubber.onrender.com`;
+      `🌐 ดูกราฟและพยากรณ์: https://paratrend-rubber.onrender.com`;
 
     return await sendLineNotification(msg);
   } catch (error) {
@@ -158,14 +181,11 @@ async function triggerPriceBroadcast() {
 
 // ----------------- ตั้งเวลาทำงานอัตโนมัติ (Cron Jobs) -----------------
 
-// 1. ดึงราคายางรอบบ่าย (สศก. มักประกาศช่วง 14:30 - 15:30 น.)
-// จันทร์ - ศุกร์ เวลา 15:30 น. เวลาไทย (08:30 UTC)
 cron.schedule('30 8 * * 1-5', async () => {
   console.log('[Cron] กำลังตรวจสอบและดึงราคายางรอบปิดตลาดประจำวัน...');
   await fetchOaeData('daily', true);
 });
 
-// 2. ส่งสรุปแจ้งเตือนเข้า LINE ทุกวันจันทร์ - ศุกร์ เวลา 09:30 น. เวลาไทย (02:30 UTC)
 cron.schedule('30 2 * * 1-5', async () => {
   console.log('[Cron] ส่งสรุปราคายางรอบเช้าเข้า LINE...');
   await triggerPriceBroadcast();
@@ -173,17 +193,18 @@ cron.schedule('30 2 * * 1-5', async () => {
 
 // ----------------- API Endpoints สำหรับ Frontend -----------------
 
+// ส่งโครงสร้าง { success: true, data: [...] } ตรงตามที่ index.html ต้องการ
 app.get('/api/rubber/daily', async (req, res) => {
   const result = await fetchOaeData('daily');
-  res.json(result);
+  res.json(result.payload);
 });
 
 app.get('/api/rubber/weekly', async (req, res) => {
-  const result = await fetchOaeData('weekly');
-  res.json(result);
+  const product = ['latex', 'cup', 'rss3'].includes(req.query.product) ? req.query.product : 'cup';
+  const result = await fetchOaeData(product);
+  res.json(result.payload);
 });
 
-// Endpoint สำหรับกดทดสอบส่ง LINE ด้วยตัวเอง
 app.get('/api/test-line', async (req, res) => {
   const success = await triggerPriceBroadcast();
   if (success) {
