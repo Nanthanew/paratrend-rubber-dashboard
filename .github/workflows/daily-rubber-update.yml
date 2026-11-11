@@ -1,0 +1,37 @@
+name: Daily Rubber Price Auto-Update (TRA & RAOT)
+
+on:
+  schedule:
+    # เวลา 16:00 น. ตามเวลาประเทศไทย (ตรงกับ 09:00 UTC) ทุกวันจันทร์ - เสาร์
+    - cron: '0 9 * * 1-6'
+  workflow_dispatch: # เปิดให้มีปุ่มกดสั่งรันเองได้ทันทีบนหน้าเว็บ GitHub
+
+permissions:
+  contents: write # อนุญาตให้บอทเขียนและ Commit ไฟล์กลับเข้า Repository ได้
+
+jobs:
+  update-rubber-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. ดึงโค้ดล่าสุดจาก Repository
+        uses: actions/checkout@v4
+
+      - name: 2. ติดตั้ง Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 3. ติดตั้งแพ็กเกจ (axios)
+        run: npm install
+
+      - name: 4. รันสคริปต์ดึงราคายางจาก สมาคมยางพาราไทย (TRA) และ กยท.
+        run: node update-prices.js
+
+      - name: 5. บันทึกและ Commit ไฟล์ JSON ทั้ง 4 ไฟล์กลับขึ้น GitHub
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add fallback-daily.json fallback-cup.json fallback-latex.json fallback-rss3.json
+          git diff --staged --quiet || git commit -m "chore(data): อัปเดตราคายางอัตโนมัติประจำวัน ($(date +'%Y-%m-%d'))"
+          git push
