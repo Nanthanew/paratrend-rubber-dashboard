@@ -633,10 +633,9 @@ window.PARATREND_SNAPSHOT = {
 
   // Same-origin backend routes; arbitrary external proxy URLs are not accepted.
   const rubberMeta = { daily: null, latex: null, cup: null, rss3: null };
-  const API = {
-    daily: '/api/rubber/daily',
-    weekly: name => '/api/rubber/weekly?product=' + encodeURIComponent(
-      name === 'น้ำยางสด คละ' ? 'latex' : name === 'ยางก้อน คละ' ? 'cup' : 'rss3'),
+  daily: 'https://paratrend-rubber.onrender.com/api/rubber/daily',
+  weekly: name => 'https://paratrend-rubber.onrender.com/api/rubber/weekly?product=' + encodeURIComponent(
+    name === 'น้ำยางสด คละ' ? 'latex' : name === 'ยางก้อน คละ' ? 'cup' : 'rss3'),
     fx:     (() => {
       const end = new Date();
       const start = new Date(Date.now() - 21 * 864e5);
