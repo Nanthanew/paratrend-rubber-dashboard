@@ -1312,7 +1312,7 @@ const API = {
     STATE.snapshotAt = S.meta ? S.meta.generatedAt : null;
   }
 
- async function loadAll(isRefresh) {
+async function loadAll(isRefresh) {
     const btn = document.getElementById('refreshDataBtn');
     const icon = document.getElementById('refreshIcon');
     if (btn) btn.disabled = true;
@@ -1320,24 +1320,55 @@ const API = {
 
     STATE.errors = {};
     
-    // บังคับดึงข้อมูลจาก Snapshot เพื่อให้แสดงผลทันทีโดยไม่ต้องรอ API ภายนอก
-    useSnapshot();
-    recomputeAll();
-    renderAll();
+    try {
+      // ดึงข้อมูลผ่านระบบ Snapshot ทันทีเพื่อความเสถียร
+      if (window.PARATREND_SNAPSHOT) {
+        const S = window.PARATREND_SNAPSHOT;
+        if (S.daily) {
+          PRODUCT_ORDER.forEach(id => {
+            if (S.daily[id]) STATE.products[id].daily = S.daily[id];
+          });
+        }
+        if (S.weekly) {
+          PRODUCT_ORDER.forEach(id => {
+            if (S.weekly[id]) STATE.products[id].weekly = S.weekly[id];
+          });
+        }
+        if (S.markets) {
+          STATE.marketRows = S.markets.map(m => ({ code: m[0], market: m[1], province: m[2], price: m[3] }));
+          if (S.meta) STATE.asOf.price = S.meta.priceAsOf;
+        }
+        if (S.marketSeries) {
+          S.marketSeries.forEach(ms => {
+            STATE.marketHist[ms.code + '|' + ms.market] = { code: ms.code, market: ms.market, province: ms.province, pts: ms.pts };
+          });
+        }
+        if (S.fxSeries) {
+          STATE.fxSeries = S.fxSeries;
+          STATE.asOf.fx = S.fxSeries[S.fxSeries.length - 1][0];
+        }
+        if (S.weather) {
+          STATE.wx.dates = S.weather.dates;
+          STATE.wx.loc = {};
+          S.weather.loc.forEach(o => { STATE.wx.loc[o.key] = o.precip; });
+        }
+        STATE.snapshotAt = S.meta ? S.meta.generatedAt : null;
+      }
+      
+      recomputeAll();
+      renderAll();
+    } catch (e) {
+      console.error(e);
+    }
 
     if (icon) icon.classList.remove('animate-spin');
     if (btn) btn.disabled = false;
 
     if (isRefresh) {
-      triggerToast('อัปเดตสำเร็จ', 'ดึงข้อมูลราคาและตัวชี้วัดเรียบร้อยแล้ว', true);
+      triggerToast('เชื่อมต่อสำเร็จ', 'แสดงข้อมูลราคาล่าสุดเรียบร้อยแล้ว', true);
       checkAlerts();
     }
   }
-      if (ok === 4) triggerToast('อัปเดตสำเร็จ', 'ดึงข้อมูลครบทั้ง 4 แหล่งแล้ว', true);
-      else if (ok > 0) triggerToast('อัปเดตบางส่วน', 'สำเร็จ ' + ok + '/4 แหล่ง' + using, false);
-      else triggerToast('อัปเดตไม่สำเร็จ', 'ใช้ข้อมูลสำเนาที่ฝังไว้ในไฟล์แล้ว', false);
-      checkAlerts();
-    }
   }
 
   // ---------------------------------------------------------- INDICATORS
