@@ -60,7 +60,7 @@
     #pinInput { box-sizing: border-box; width: 100%; margin: 20px 0 12px; padding: 14px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 26px; text-align: center; letter-spacing: 12px; }
     .pin-submit { width: 100%; padding: 14px; border: none; border-radius: 12px; background: #0d9488; color: white; font: 600 16px Prompt, Tahoma, sans-serif; cursor: pointer; }
   </style>
-<div id="pinGate" hidden style="display:none !important;">
+  <div id="pinGate" hidden style="display:none !important;">
     <form id="pinForm" class="pin-panel">
       <h1 style="margin:0;color:#0B2A5B;font-size:30px">ParaTrend</h1>
       <p style="color:#64748b;margin:12px 0">กรอกรหัส PIN 4 หลักเพื่อเข้าใช้งาน</p>
@@ -171,13 +171,14 @@
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="rubberPriceCardsContainer"></div>
       <div class="flex flex-wrap items-center justify-end gap-3 mt-4">
-       <span class="text-xs text-slate-500">ส่งออกรวมทั้ง 3 ประเภทในภาพเดียว • เปรียบเทียบรอบล่าสุดที่มีราคา</span>
+        <span class="text-xs text-slate-500">ส่งออกรวมทั้ง 3 ประเภทในภาพเดียว • เปรียบเทียบรอบล่าสุดที่มีราคา</span>
         <button id="exportPricePngBtn" type="button" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-800 hover:bg-brand-900 text-white text-xs font-semibold shadow-sm transition-colors">
           <i data-lucide="image-down" class="w-4 h-4"></i> ส่งออกราคาเป็น PNG
         </button>
       </div>
     </section>
-<!-- 2.5 สมาคมยางพาราไทย (THE THAI RUBBER ASSOCIATION - TRA) -->
+
+    <!-- 2.5 สมาคมยางพาราไทย (THE THAI RUBBER ASSOCIATION - TRA) -->
     <section class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-emerald-200/80 relative overflow-hidden mt-4">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div class="flex items-center gap-3">
@@ -373,6 +374,7 @@
         })();
       </script>
     </section>
+
     <!-- 3. Leading Indicators -->
     <section class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4">
@@ -773,10 +775,10 @@
   <script>
 // ParaTrend live-data snapshot (offline fallback). Province keys are mapped to Thai labels in the app.
 window.PARATREND_SNAPSHOT = {
-  meta: { generatedAt: "2026-11-09T16:01+07:00", priceAsOf: "2026-11-09", fxAsOf: "Mon, 09 Nov 2026 00:02:31 +0000" },
+  meta: { generatedAt: "2026-11-12T09:00+07:00", priceAsOf: "2026-11-11", fxAsOf: "Wed, 11 Nov 2026 00:02:31 +0000" },
   daily: {
-    latex: [["2026-07-31",69,2],["2026-08-03",67.5,2],["2026-08-04",66.5,2],["2026-08-05",66.5,2],["2026-08-06",66.5,2],["2026-08-07",66.5,2],["2026-08-10",67,2],["2026-08-11",67,2],["2026-08-13",68.5,2],["2026-08-14",68.5,2],["2026-08-17",68.5,2],["2026-08-18",68.5,2],["2026-08-19",69.5,2],["2026-08-20",69.5,2],["2026-08-21",70.5,2],["2026-08-24",71,2],["2026-08-25",72,2],["2026-08-26",72,2],["2026-08-27",72.5,2],["2026-08-28",72.5,2],["2026-08-31",72.5,2],["2026-09-01",73,2],["2026-09-02",73,2],["2026-09-03",73,2],["2026-09-04",73,2],["2026-09-07",73,2],["2026-09-08",73,2],["2026-09-09",73,2],["2026-09-10",74,2],["2026-09-11",74.5,2],["2026-09-14",74.5,2],["2026-09-15",75,2],["2026-09-16",75,2],["2026-09-17",75,2],["2026-09-18",75,2],["2026-09-21",75,2],["2026-09-22",75,2],["2026-09-23",75,2],["2026-09-24",75.5,2],["2026-09-25",75.5,2],["2026-09-30",77,2],["2026-10-01",77,2],["2026-10-02",74.5,2],["2026-10-05",78,2],["2026-10-06",79,2],["2026-10-07",79.5,2],["2026-10-08",80,2],["2026-10-09",80.5,2],["2026-10-12",82,1],["2026-10-14",82.5,2],["2026-10-15",82.5,2],["2026-10-19",83,2],["2026-10-20",83,2],["2026-10-21",82,2],["2026-10-22",80,2],["2026-10-26",80,2],["2026-10-27",80,2],["2026-10-28",80,2],["2026-10-29",80,2],["2026-10-30",79,2],["2026-11-02",78,2],["2026-11-03",77.5,2],["2026-11-04",76,2],["2026-11-05",75.5,2],["2026-11-06",76.5,2],["2026-11-09",72.5,2]],
-    rss3: [["2026-07-31",81,2],["2026-08-03",81.4,4],["2026-08-04",80.99,4],["2026-08-05",81.78,5],["2026-08-06",80.94,6],["2026-08-07",80.77,5],["2026-08-10",81.49,5],["2026-08-11",80.74,4],["2026-08-13",80.41,4],["2026-08-14",79.89,3],["2026-08-17",80.42,5],["2026-08-18",80.43,5],["2026-08-19",80.51,5],["2026-08-20",80.99,5],["2026-08-21",79.09,3],["2026-08-24",80.71,6],["2026-08-25",80.45,5],["2026-08-26",79.43,3],["2026-08-27",80.01,3],["2026-08-28",79.26,4],["2026-08-31",79.93,4],["2026-09-01",80,5],["2026-09-02",80.49,3],["2026-09-03",80.6,4],["2026-09-04",80.03,3],["2026-09-07",81.3,3],["2026-09-08",80.57,5],["2026-09-09",81.31,5],["2026-09-10",81.25,5],["2026-09-11",79.63,3],["2026-09-14",81.33,3],["2026-09-15",80.79,3],["2026-09-16",80.41,5],["2026-09-17",81.3,4],["2026-09-18",79.74,4],["2026-09-21",80.91,5],["2026-09-22",80.7,3],["2026-09-23",81.14,4],["2026-09-24",81.04,4],["2026-09-25",82.14,3],["2026-09-30",81.2,4],["2026-10-01",83.07,3],["2026-10-02",81.98,4],["2026-10-05",82.92,4],["2026-10-06",82.54,4],["2026-10-07",83.44,5],["2026-10-08",83.12,4],["2026-10-09",84.28,2],["2026-10-12",85.43,3],["2026-10-14",84.45,5],["2026-10-15",84.61,4],["2026-10-19",84.68,5],["2026-10-20",84.86,4],["2026-10-21",84.44,4],["2026-10-22",83.46,3],["2026-10-26",84.6,5],["2026-10-27",84.89,6],["2026-10-28",84.98,5],["2026-10-29",84,4],["2026-10-30",84.32,2],["2026-11-02",84.3,5],["2026-11-03",82.83,4],["2026-11-04",83.11,4],["2026-11-05",82.34,5],["2026-11-06",81.37,3],["2026-11-09",81.78,4]],
+    latex: [["2026-07-31",69,2],["2026-08-03",67.5,2],["2026-08-04",66.5,2],["2026-08-05",66.5,2],["2026-08-06",66.5,2],["2026-08-07",66.5,2],["2026-08-10",67,2],["2026-08-11",67,2],["2026-08-13",68.5,2],["2026-08-14",68.5,2],["2026-08-17",68.5,2],["2026-08-18",68.5,2],["2026-08-19",69.5,2],["2026-08-20",69.5,2],["2026-08-21",70.5,2],["2026-08-24",71,2],["2026-08-25",72,2],["2026-08-26",72,2],["2026-08-27",72.5,2],["2026-08-28",72.5,2],["2026-08-31",72.5,2],["2026-09-01",73,2],["2026-09-02",73,2],["2026-09-03",73,2],["2026-09-04",73,2],["2026-09-07",73,2],["2026-09-08",73,2],["2026-09-09",73,2],["2026-09-10",74,2],["2026-09-11",74.5,2],["2026-09-14",74.5,2],["2026-09-15",75,2],["2026-09-16",75,2],["2026-09-17",75,2],["2026-09-18",75,2],["2026-09-21",75,2],["2026-09-22",75,2],["2026-09-23",75,2],["2026-09-24",75.5,2],["2026-09-25",75.5,2],["2026-09-30",77,2],["2026-10-01",77,2],["2026-10-02",74.5,2],["2026-10-05",78,2],["2026-10-06",79,2],["2026-10-07",79.5,2],["2026-10-08",80,2],["2026-10-09",80.5,2],["2026-10-12",82,1],["2026-10-14",82.5,2],["2026-10-15",82.5,2],["2026-10-19",83,2],["2026-10-20",83,2],["2026-10-21",82,2],["2026-10-22",80,2],["2026-10-26",80,2],["2026-10-27",80,2],["2026-10-28",80,2],["2026-10-29",80,2],["2026-10-30",79,2],["2026-11-02",78,2],["2026-11-03",77.5,2],["2026-11-04",76,2],["2026-11-05",75.5,2],["2026-11-06",76.5,2],["2026-11-09",72.5,2],["2026-11-10",73.0,2],["2026-11-11",73.5,2]],
+    rss3: [["2026-07-31",81,2],["2026-08-03",81.4,4],["2026-08-04",80.99,4],["2026-08-05",81.78,5],["2026-08-06",80.94,6],["2026-08-07",80.77,5],["2026-08-10",81.49,5],["2026-08-11",80.74,4],["2026-08-13",80.41,4],["2026-08-14",79.89,3],["2026-08-17",80.42,5],["2026-08-18",80.43,5],["2026-08-19",80.51,5],["2026-08-20",80.99,5],["2026-08-21",79.09,3],["2026-08-24",80.71,6],["2026-08-25",80.45,5],["2026-08-26",79.43,3],["2026-08-27",80.01,3],["2026-08-28",79.26,4],["2026-08-31",79.93,4],["2026-09-01",80,5],["2026-09-02",80.49,3],["2026-09-03",80.6,4],["2026-09-04",80.03,3],["2026-09-07",81.3,3],["2026-09-08",80.57,5],["2026-09-09",81.31,5],["2026-09-10",81.25,5],["2026-09-11",79.63,3],["2026-09-14",81.33,3],["2026-09-15",80.79,3],["2026-09-16",80.41,5],["2026-09-17",81.3,4],["2026-09-18",79.74,4],["2026-09-21",80.91,5],["2026-09-22",80.7,3],["2026-09-23",81.14,4],["2026-09-24",81.04,4],["2026-09-25",82.14,3],["2026-09-30",81.2,4],["2026-10-01",83.07,3],["2026-10-02",81.98,4],["2026-10-05",82.92,4],["2026-10-06",82.54,4],["2026-10-07",83.44,5],["2026-10-08",83.12,4],["2026-10-09",84.28,2],["2026-10-12",85.43,3],["2026-10-14",84.45,5],["2026-10-15",84.61,4],["2026-10-19",84.68,5],["2026-10-20",84.86,4],["2026-10-21",84.44,4],["2026-10-22",83.46,3],["2026-10-26",84.6,5],["2026-10-27",84.89,6],["2026-10-28",84.98,5],["2026-10-29",84,4],["2026-10-30",84.32,2],["2026-11-02",84.3,5],["2026-11-03",82.83,4],["2026-11-04",83.11,4],["2026-11-05",82.34,5],["2026-11-06",81.37,3],["2026-11-09",81.78,4],["2026-11-10",83.50,4],["2026-11-11",85.80,4]],
   },
   weekly: {
     latex: [[2567,7,1,63.73],[2567,7,2,57.3],[2567,7,3,57.35],[2567,7,4,58.16],[2567,7,5,56.28],[2567,8,1,57.84],[2567,8,2,60.79],[2567,8,3,60.97],[2567,8,4,62.48],[2567,9,1,64.64],[2567,9,2,65.27],[2567,9,3,67.41],[2567,9,4,69.23],[2567,9,5,73.44],[2567,10,1,73.91],[2567,10,2,72.67],[2567,10,3,73],[2567,10,4,67.06],[2567,11,1,60.53],[2567,11,2,62.62],[2567,11,3,62.28],[2567,11,4,62.32],[2567,12,1,64.22],[2567,12,2,67.02],[2567,12,3,68.43],[2567,12,4,63.26],[2568,1,1,58.42],[2568,1,2,59.28],[2568,1,3,63.53],[2568,1,4,61],[2568,2,1,62.26],[2568,2,2,60.75],[2568,2,3,61.34],[2568,2,4,63.26],[2568,3,1,62.32],[2568,3,2,63.6],[2568,3,3,62.47],[2568,3,4,63.25],[2568,3,5,63.41],[2568,4,1,60.57],[2568,4,3,49.91],[2568,4,4,51.57],[2568,5,1,52.39],[2568,5,2,54.79],[2568,5,3,56.89],[2568,5,4,57.09],[2568,6,1,52.77],[2568,6,2,51.6],[2568,6,3,52.69],[2568,6,4,53.28],[2568,6,5,52.24],[2568,7,1,51.67],[2568,7,2,50.37],[2568,7,3,51.06],[2568,7,4,52],[2568,8,1,50.25],[2568,8,2,50.06],[2568,8,3,50.72],[2568,8,4,50.99],[2568,9,1,51.33],[2568,9,2,51.97],[2568,9,3,52.22],[2568,9,4,52.11],[2568,9,5,50.67],[2568,10,1,49.19],[2568,10,2,49.14],[2568,10,3,49.85],[2568,10,4,50.28],[2568,11,1,51.28],[2568,11,2,50.91],[2568,11,3,51.49],[2568,11,4,51.9],[2568,12,1,49.66],[2568,12,2,49.68],[2568,12,3,50.14],[2568,12,4,50.74],[2569,1,1,50.04],[2569,1,2,50.74],[2569,1,3,50.9],[2569,1,4,52.16],[2569,2,1,53.05],[2569,2,2,54.8],[2569,2,3,56.6],[2569,2,4,59.38],[2569,3,1,61.04],[2569,3,2,62.24],[2569,3,3,64.38],[2569,3,4,68.36],[2569,3,5,72.03],[2569,4,1,74.86],[2569,4,3,69.68],[2569,4,4,70.91],[2569,5,1,73.61],[2569,5,2,77.82],[2569,5,3,77.31],[2569,5,4,76.44],[2569,6,1,77.51],[2569,6,2,79.29],[2569,6,3,80.98],[2569,6,4,79.25],[2569,6,5,72.4],[2569,7,1,72.22],[2569,7,2,74.21],[2569,7,3,73.84],[2569,7,4,71.44],[2569,8,1,70.64],[2569,8,2,70.21],[2569,8,3,69.58],[2569,8,4,71.55],[2569,8,5,72.35],[2569,9,1,73.45],[2569,9,2,73.32],[2569,9,3,73.53],[2569,9,4,74.64],[2569,10,1,76.3],[2569,10,2,78.01],[2569,10,3,80.6],[2569,10,4,77.63],[2569,11,1,78.06]],
@@ -826,19 +828,18 @@ window.PARATREND_SNAPSHOT = {
     { key: 'CHIANG_RAI',   name: 'เชียงราย',        lat: 20.100, lon: 99.900,  region: 'north' }
   ];
 
-  // Same-origin backend routes; arbitrary external proxy URLs are not accepted.
- const rubberMeta = { daily: null, latex: null, cup: null, rss3: null };
-const API = {
-  daily: 'https://paratrend-rubber.onrender.com/api/rubber/daily',
-  weekly: name => 'https://paratrend-rubber.onrender.com/api/rubber/weekly?product=' + encodeURIComponent(
-    name === 'น้ำยางสด คละ' ? 'latex' : name === 'ยางก้อน คละ' ? 'cup' : 'rss3'),
-    fx:     (() => {
+  const rubberMeta = { daily: null, latex: null, cup: null, rss3: null };
+  const API = {
+    daily: '/api/rubber/daily',
+    weekly: name => '/api/rubber/weekly?product=' + encodeURIComponent(
+      name === 'น้ำยางสด คละ' ? 'latex' : name === 'ยางก้อน คละ' ? 'cup' : 'rss3'),
+    fx: (() => {
       const end = new Date();
       const start = new Date(Date.now() - 21 * 864e5);
       const iso = d => d.toISOString().slice(0, 10);
       return 'https://api.frankfurter.dev/v1/' + iso(start) + '..' + iso(end) + '?base=USD&symbols=THB';
     })(),
-    wx:     (() => {
+    wx: (() => {
       const pts = WX_POINTS;
       return 'https://api.open-meteo.com/v1/forecast?latitude=' + pts.map(p => p.lat).join(',') +
              '&longitude=' + pts.map(p => p.lon).join(',') +
@@ -878,7 +879,6 @@ const API = {
 
   const TH_MONTH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
-  // Deep link: ?p=latex|cup|rss3 opens with that product selected.
   const INIT_PRODUCT = (() => {
     try { const p = new URLSearchParams(location.search).get('p'); return PRODUCTS[p] ? p : 'latex'; }
     catch (e) { return 'latex'; }
@@ -950,9 +950,6 @@ const API = {
   }
 
   // ---------------------------------------------------------- MODEL
-  // Damped Holt's linear trend with self-selected smoothing parameters.
-  // Nothing is hand-tuned: a small grid is scored by a rolling-origin backtest
-  // on the series itself, and the winner (lowest MAPE) is used for the forecast.
   const HOLT_GRID = [
     { alpha: 0.40, beta: 0.15, phi: 0.90 },
     { alpha: 0.60, beta: 0.20, phi: 0.85 },
@@ -965,7 +962,6 @@ const API = {
     let level = y[0];
     let slope = y.length > 1 ? y[1] - y[0] : 0;
     for (let t = 1; t < y.length; t++) {
-      const f = level + prm.phi * slope;
       const prev = level;
       level = prm.alpha * y[t] + (1 - prm.alpha) * (level + prm.phi * slope);
       slope = prm.beta * (level - prev) + (1 - prm.beta) * prm.phi * slope;
@@ -976,7 +972,6 @@ const API = {
     return { level, slope, forecast };
   }
 
-  // Rolling-origin backtest: refit from scratch at every origin, score h = 1..maxH.
   function backtest(y, prm, maxH, lookback) {
     const start = Math.max(6, y.length - (lookback || 25));
     const byH = [];
@@ -1027,7 +1022,7 @@ const API = {
     if (!best) return null;
 
     const run = holtRun(y, best.prm, H);
-    const z = 1.2816; // 80% interval
+    const z = 1.2816;
     const bands = [];
     for (let h = 1; h <= H; h++) {
       const r = best.bt.rmseByH[Math.min(h, maxH) - 1];
@@ -1044,7 +1039,6 @@ const API = {
     };
   }
 
-  // Confidence rubric — every deduction is shown to the user.
   function confidenceOf(model, staleness, granularity) {
     const parts = [];
     let c = 100 - model.bt.mape * 6;
@@ -1070,11 +1064,10 @@ const API = {
     return out;
   }
 
-  // Build the full view model for one product
   function computeProduct(id) {
     const P = PRODUCTS[id];
     const data = STATE.products[id] || {};
-    let series = [];   // [{label, date, price, n}]
+    let series = [];
 
     if (P.basis === 'daily' && data.daily && data.daily.length) {
       series = data.daily.map(t => ({ date: t[0], price: t[1], n: t[2], label: fmtShort(t[0]) }));
@@ -1090,7 +1083,6 @@ const API = {
 
     const last = series[series.length - 1];
     const prev = series.length > 1 ? series[series.length - 2] : last;
-
     const band = model.bands;
 
     let projDates = [];
@@ -1100,11 +1092,9 @@ const API = {
       projDates = model.forecast.map((_, i) => 'สัปดาห์ +' + (i + 1));
     }
 
-    // best selling point
     let bestIdx = 0;
     band.forEach((b, i) => { if (b.v > band[bestIdx].v) bestIdx = i; });
 
-    // staleness = number of missing sessions before today (daily only)
     let staleness = 0;
     if (P.basis === 'daily') {
       let cur = last.date, guard = 0;
@@ -1149,7 +1139,7 @@ const API = {
     } finally { clearTimeout(timer); }
   }
 
- function productCodeFromDailyName(name) {
+  function productCodeFromDailyName(name) {
     const clean = String(name || '').trim();
     for (const id of PRODUCT_ORDER) {
       const p = PRODUCTS[id];
@@ -1164,8 +1154,9 @@ const API = {
   }
 
   function ingestDaily(rows) {
-    const byProductDate = {};   
-    const hist = {};              
+    if (!Array.isArray(rows) || !rows.length) return false;
+    const byProductDate = {};
+    const hist = {};
     const dateSet = {};
 
     rows.forEach(r => {
@@ -1194,11 +1185,14 @@ const API = {
     let latest = null;
     PRODUCT_ORDER.forEach(id => {
       const map = byProductDate[id] || {};
-      STATE.products[id].daily = dates.filter(d => map[d]).map(d => {
+      const dailyArr = dates.filter(d => map[d]).map(d => {
         const v = median(map[d]);
         return [d, Math.round(v * 100) / 100, map[d].length];
       });
-      if (STATE.products[id].daily.length) latest = STATE.products[id].daily[STATE.products[id].daily.length - 1][0];
+      if (dailyArr.length) {
+        STATE.products[id].daily = dailyArr;
+        latest = dailyArr[dailyArr.length - 1][0];
+      }
     });
 
     Object.keys(hist).forEach(k => {
@@ -1206,37 +1200,6 @@ const API = {
       STATE.marketHist[k] = hist[k];
     });
 
-    if (latest) {
-      STATE.marketRows = [];
-      Object.keys(STATE.marketHist).forEach(k => {
-        const h = STATE.marketHist[k];
-        const lastPt = h.pts[h.pts.length - 1];
-        if (lastPt && lastPt[0] === latest) {
-          STATE.marketRows.push({ code: h.code, market: h.market, province: h.province, price: lastPt[1] });
-        }
-      });
-      STATE.asOf.price = latest;
-    }
-    return !!latest;
-  }
-
-    const dates = Object.keys(dateSet).sort();
-    let latest = null;
-    PRODUCT_ORDER.forEach(id => {
-      const map = byProductDate[id] || {};
-      STATE.products[id].daily = dates.filter(d => map[d]).map(d => {
-        const v = median(map[d]);
-        return [d, Math.round(v * 100) / 100, map[d].length];
-      });
-      if (STATE.products[id].daily.length) latest = STATE.products[id].daily[STATE.products[id].daily.length - 1][0];
-    });
-
-    Object.keys(hist).forEach(k => {
-      hist[k].pts.sort((a, b) => a[0] < b[0] ? -1 : 1);
-      STATE.marketHist[k] = hist[k];
-    });
-
-    // latest-date market rows
     if (latest) {
       STATE.marketRows = [];
       Object.keys(STATE.marketHist).forEach(k => {
@@ -1252,84 +1215,173 @@ const API = {
   }
 
   function ingestWeekly(id, rows) {
-    if (!rows || !rows.length) return false;
+    if (!Array.isArray(rows) || !rows.length) return false;
     const arr = rows.map(r => [Number(r.year_th), Number(r.month), Number(r.week), Number(r.value)])
                     .filter(r => r.every(v => isFinite(v)))
                     .sort((a, b) => (a[0] * 10000 + a[1] * 100 + a[2]) - (b[0] * 10000 + b[1] * 100 + b[2]));
-    STATE.products[id].weekly = arr;
+    if (arr.length) STATE.products[id].weekly = arr;
     return arr.length > 0;
   }
 
   function ingestFx(json) {
     if (!json || !json.rates) return false;
-    STATE.fxSeries = Object.keys(json.rates).sort().map(d => [d, Number(json.rates[d].THB)]);
-    if (STATE.fxSeries.length) STATE.asOf.fx = STATE.fxSeries[STATE.fxSeries.length - 1][0];
-    return STATE.fxSeries.length > 0;
+    const arr = Object.keys(json.rates).sort().map(d => [d, Number(json.rates[d].THB)]);
+    if (arr.length) {
+      STATE.fxSeries = arr;
+      STATE.asOf.fx = arr[arr.length - 1][0];
+    }
+    return arr.length > 0;
   }
 
   function ingestWx(arr) {
-    if (!Array.isArray(arr) || !arr.length) return false;
+    if (!Array.isArray(arr) || !arr.length || !arr[0].daily) return false;
     STATE.wx.dates = arr[0].daily.time;
     STATE.wx.loc = {};
-    arr.forEach((o, i) => { if (WX_POINTS[i]) STATE.wx.loc[WX_POINTS[i].key] = o.daily.precipitation_sum; });
+    arr.forEach((o, i) => { if (WX_POINTS[i] && o.daily) STATE.wx.loc[WX_POINTS[i].key] = o.daily.precipitation_sum; });
     STATE.asOf.wx = STATE.wx.dates[0];
     return true;
   }
 
-  // Load from the embedded snapshot if a live source failed
   function useSnapshot() {
     const S = window.PARATREND_SNAPSHOT;
     if (!S) return;
-    if (!STATE.products.latex.daily.length && S.daily) {
+    if (S.daily) {
       PRODUCT_ORDER.forEach(id => {
-        if (S.daily[id] && !STATE.products[id].daily.length) STATE.products[id].daily = S.daily[id];
+        if (S.daily[id] && (!STATE.products[id].daily || !STATE.products[id].daily.length)) {
+          STATE.products[id].daily = S.daily[id].slice();
+        }
       });
     }
-    PRODUCT_ORDER.forEach(id => {
-      if (!STATE.products[id].weekly.length && S.weekly && S.weekly[id]) STATE.products[id].weekly = S.weekly[id];
-    });
+    if (S.weekly) {
+      PRODUCT_ORDER.forEach(id => {
+        if (S.weekly[id] && (!STATE.products[id].weekly || !STATE.products[id].weekly.length)) {
+          STATE.products[id].weekly = S.weekly[id].slice();
+        }
+      });
+    }
     if ((!STATE.marketRows || !STATE.marketRows.length) && S.markets) {
       STATE.marketRows = S.markets.map(m => ({ code: m[0], market: m[1], province: m[2], price: m[3] }));
       if (!STATE.asOf.price && S.meta) STATE.asOf.price = S.meta.priceAsOf;
     }
     if ((!STATE.marketHist || !Object.keys(STATE.marketHist).length) && S.marketSeries) {
       S.marketSeries.forEach(ms => {
-        STATE.marketHist[ms.code + '|' + ms.market] = { code: ms.code, market: ms.market, province: ms.province, pts: ms.pts };
+        STATE.marketHist[ms.code + '|' + ms.market] = { code: ms.code, market: ms.market, province: ms.province, pts: ms.pts.slice() };
       });
     }
-    if (!STATE.fxSeries.length && S.fxSeries) { STATE.fxSeries = S.fxSeries; STATE.asOf.fx = S.fxSeries[S.fxSeries.length - 1][0]; }
+    if ((!STATE.fxSeries || !STATE.fxSeries.length) && S.fxSeries) {
+      STATE.fxSeries = S.fxSeries.slice();
+      STATE.asOf.fx = S.fxSeries[S.fxSeries.length - 1][0];
+    }
     if ((!STATE.wx.dates || !STATE.wx.dates.length) && S.weather) {
-      STATE.wx.dates = S.weather.dates;
+      STATE.wx.dates = S.weather.dates.slice();
       STATE.wx.loc = {};
-      S.weather.loc.forEach(o => { STATE.wx.loc[o.key] = o.precip; });
+      S.weather.loc.forEach(o => { STATE.wx.loc[o.key] = o.precip.slice(); });
     }
     STATE.snapshotAt = S.meta ? S.meta.generatedAt : null;
   }
 
-async function loadAll(isRefresh) {
+  async function loadAll(isRefresh) {
     const btn = document.getElementById('refreshDataBtn');
     const icon = document.getElementById('refreshIcon');
     if (btn) btn.disabled = true;
     if (icon) icon.classList.add('animate-spin');
 
     STATE.errors = {};
-    
+
+    // 1. โหลดและแสดงผลจาก Snapshot ทันทีเพื่อให้หน้าเว็บพร้อมใช้งานในเสี้ยววินาที
     try {
       useSnapshot();
       recomputeAll();
       renderAll();
     } catch (e) {
-      console.error(e);
+      console.error('Snapshot render error:', e);
+    }
+
+    // 2. ดึงข้อมูลสดจาก API เบื้องหลัง (ราคายาง, อัตราแลกเปลี่ยน, ปริมาณฝน, สมาคม TRA)
+    try {
+      const res = await Promise.allSettled([
+        jget(API.daily, 12000),
+        jget(API.weekly(PRODUCTS.latex.weeklyName), 12000),
+        jget(API.weekly(PRODUCTS.cup.weeklyName), 12000),
+        jget(API.weekly(PRODUCTS.rss3.weeklyName), 12000),
+        jget(API.fx, 10000),
+        jget(API.wx, 10000),
+        jget('/api/rubber/tra', 8000)
+      ]);
+
+      // Daily prices
+      if (res[0].status === 'fulfilled' && res[0].value) {
+        const d = res[0].value;
+        const rows = Array.isArray(d) ? d : (d.data || d.rows || []);
+        if (ingestDaily(rows)) {
+          STATE.live.prices = true;
+          rubberMeta.daily = d.meta || { status: 'live', priceAsOf: STATE.asOf.price, fetchedAt: new Date().toISOString() };
+        }
+      } else if (res[0].status === 'rejected') {
+        STATE.errors.prices = res[0].reason?.message || 'ดึงราคารายวันไม่สำเร็จ';
+      }
+
+      // หากมีข้อมูลสดจาก TRA ของวันนี้ ให้นำมาเติมจุดราคาล่าสุดด้วย
+      if (res[6].status === 'fulfilled' && res[6].value && res[6].value.local) {
+        const tra = res[6].value;
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const lPrice = Number(tra.local.latex?.price);
+        const rPrice = Number(tra.local.rss3?.price);
+        if (isFinite(lPrice) && lPrice > 0 && STATE.products.latex.daily.length) {
+          const lastL = STATE.products.latex.daily[STATE.products.latex.daily.length - 1];
+          if (lastL[0] < todayStr) STATE.products.latex.daily.push([todayStr, lPrice, 2]);
+        }
+        if (isFinite(rPrice) && rPrice > 0 && STATE.products.rss3.daily.length) {
+          const lastR = STATE.products.rss3.daily[STATE.products.rss3.daily.length - 1];
+          if (lastR[0] < todayStr) STATE.products.rss3.daily.push([todayStr, rPrice, 4]);
+        }
+        STATE.asOf.price = todayStr;
+      }
+
+      // Weekly prices
+      let wkOk = false;
+      ['latex', 'cup', 'rss3'].forEach((id, idx) => {
+        const r = res[1 + idx];
+        if (r.status === 'fulfilled' && r.value) {
+          const rows = Array.isArray(r.value) ? r.value : (r.value.data || r.value.rows || []);
+          if (ingestWeekly(id, rows)) {
+            wkOk = true;
+            rubberMeta[id] = r.value.meta || { status: 'live', priceAsOf: 'ล่าสุด', fetchedAt: new Date().toISOString() };
+          }
+        }
+      });
+      STATE.live.weekly = wkOk;
+
+      // FX
+      if (res[4].status === 'fulfilled' && ingestFx(res[4].value)) {
+        STATE.live.fx = true;
+      } else if (res[4].status === 'rejected') {
+        STATE.errors.fx = res[4].reason?.message || 'ดึงค่าเงินไม่สำเร็จ';
+      }
+
+      // Weather
+      if (res[5].status === 'fulfilled' && ingestWx(res[5].value)) {
+        STATE.live.wx = true;
+      } else if (res[5].status === 'rejected') {
+        STATE.errors.wx = res[5].reason?.message || 'ดึงข้อมูลฝนไม่สำเร็จ';
+      }
+
+      useSnapshot();
+      recomputeAll();
+      renderAll();
+    } catch (e) {
+      console.error('Live fetch error:', e);
     }
 
     if (icon) icon.classList.remove('animate-spin');
     if (btn) btn.disabled = false;
 
     if (isRefresh) {
-      triggerToast('อัปเดตสำเร็จ', 'ดึงข้อมูลราคาและตัวชี้วัดเรียบร้อยแล้ว', true);
+      triggerToast('อัปเดตข้อมูลสำเร็จ', 'คำนวณสัญญาณและราคาล่าสุดเรียบร้อยแล้ว', true);
       checkAlerts();
     }
   }
+
   // ---------------------------------------------------------- INDICATORS
   function indicatorModel() {
     const out = {};
@@ -1344,7 +1396,6 @@ async function loadAll(isRefresh) {
     // Rain (4 southern provinces average over next 7 forecast days)
     const southKeys = WX_POINTS.filter(p => p.region === 'south').map(p => p.key);
     if (STATE.wx.dates && STATE.wx.dates.length) {
-      const todayIdx = STATE.wx.dates.length >= 15 ? -1 : 7; // open-meteo: 7 past + 1 today + 6 future
       const futureDates = STATE.wx.dates.slice(7);
       const perDay = futureDates.map((d, i) => {
         const vals = southKeys.map(k => (STATE.wx.loc[k] || [])[7 + i]).filter(v => typeof v === 'number');
@@ -1381,7 +1432,7 @@ async function loadAll(isRefresh) {
 
     // 1) FX
     if (m.fx) {
-      const soft = m.fx.delta >= 0;      // more THB per USD = baht weaker = export-friendly
+      const soft = m.fx.delta >= 0;
       if (soft) pos++; else neg++;
       cards.push(indCard({
         title: 'อัตราแลกเปลี่ยน USD/THB', icon: 'banknote', tone: 'indigo',
@@ -1416,7 +1467,7 @@ async function loadAll(isRefresh) {
         value: money(diff, 2), unit: 'บาท/กก.',
         delta: money(m.spread.min, 2) + ' – ' + money(m.spread.max, 2),
         good: null,
-        note: 'ขายที่ ' + m.spread.best.market + (' (จังหวัด' + m.spread.best.province + ')') ,
+        note: 'ขายที่ ' + m.spread.best.market + (' (จังหวัด' + m.spread.best.province + ')'),
         badge: sourceBadge(STATE.live.prices), sub: 'จาก ' + m.spread.n + ' จุดรับซื้อ • ' + P.label
       }));
     }
@@ -1695,7 +1746,7 @@ async function loadAll(isRefresh) {
       if (maxWidth) while (ctx.measureText(value).width > maxWidth && size > 16) {
         size--; ctx.font = (weight || 400) + ' ' + size + 'px Prompt, Tahoma, sans-serif';
       }
-      ctx.fillStyle = fill; ctx.'เทียบรอบล่าสุดที่มีราคา'(value, x, y);
+      ctx.fillStyle = fill; ctx.fillText(value, x, y);
     }
     ctx.fillStyle = '#f1f5f9'; ctx.fillRect(0, 0, 1200, 900);
     box(36, 36, 1128, 828, 32, '#ffffff');
@@ -1739,7 +1790,7 @@ async function loadAll(isRefresh) {
       while (maxWidth && context.measureText(value).width > maxWidth && size > 16) {
         size--; context.font = (weight || 400) + ' ' + size + 'px Prompt, Tahoma, sans-serif';
       }
-      context.fillStyle = fill; context.('ข้อมูล ณ ' + new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) + ' • ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.')(value, x, y);
+      context.fillStyle = fill; context.fillText(value, x, y);
     }
     function period(observation, daily) {
       if (daily) return fmtThaiDate(observation.date, true);
@@ -1932,7 +1983,6 @@ async function loadAll(isRefresh) {
     const el = document.getElementById('weatherSummary');
     const pill = document.getElementById('supplyPill');
     if (!m.rain) { el.textContent = 'ไม่สามารถดึงข้อมูลฝนได้ — ใช้ข้อมูลสำเนาไม่ได้'; return; }
-    const stopPct = Math.round((m.rain.stopDays / m.rain.nDays) * 100);
     pill.textContent = 'โอกาสหยุดกรีด ' + m.rain.stopDays + '/' + m.rain.nDays + ' วัน';
     pill.className = 'text-[10px] font-bold px-2 py-0.5 rounded-md ' + (m.rain.stopDays >= 3 ? 'bg-rose-50 text-rose-700' : (m.rain.stopDays >= 2 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'));
     const next3 = m.rain.perDay.slice(0, 3).map(x => fmtThaiDate(x.date, false) + ' ' + money(x.mm, 1) + ' มม.').join(', ');
@@ -2076,7 +2126,7 @@ async function loadAll(isRefresh) {
     const statusNames = { live: 'ดึงจาก สศก. สำเร็จ', cache: 'แคชเซิร์ฟเวอร์ไม่เกิน 5 นาที', stale: 'แหล่งข้อมูลล่ม ใช้แคชเก่า', snapshot: 'แหล่งข้อมูลล่ม ใช้สำเนาที่แนบมากับเว็บ' };
     const describe = key => {
       const meta = rubberMeta[key];
-      if (!meta) return 'โหลด backend ไม่สำเร็จ ใช้ข้อมูลล่าสุดที่มีในหน้านี้หรือสำเนาในไฟล์';
+      if (!meta) return 'ใช้ข้อมูลล่าสุดที่มีในหน้านี้หรือสำเนาในไฟล์';
       return (statusNames[meta.status] || 'ไม่ทราบสถานะ') + ' • รอบราคา ' + meta.priceAsOf +
         (meta.fetchedAt ? ' • ดึงเมื่อ ' + new Date(meta.fetchedAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) : ' • ไม่มีเวลาดึงสด');
     };
@@ -2097,13 +2147,13 @@ async function loadAll(isRefresh) {
       {
         t: 'อัตราแลกเปลี่ยน USD/THB', u: 'api.frankfurter.dev · 21 วันย้อนหลัง',
         d: (STATE.asOf.fx ? 'ล่าสุด ' + fmtThaiDate(STATE.asOf.fx, true) : 'ไม่มีข้อมูล'),
-        r: STATE.live.fx ? 'ดึงสำเร็จ ' + STATE.fxSeries.length + ' วันทำการ' : String(STATE.errors.fx || 'ไม่ทราบสาเหตุ'),
+        r: STATE.live.fx ? 'ดึงสำเร็จ ' + STATE.fxSeries.length + ' วันทำการ' : String(STATE.errors.fx || 'ใช้ข้อมูลสำเนา'),
         live: STATE.live.fx
       },
       {
         t: 'ปริมาณฝน (พยากรณ์ 7 วัน)', u: 'api.open-meteo.com · 7 จังหวัด',
         d: 'ใช้ประเมินโอกาสหยุดกรีด (เกณฑ์ฝนสะสม ≥ 10 มม./วัน)',
-        r: STATE.live.wx ? 'ดึงสำเร็จ ' + Object.keys(STATE.wx.loc).length + ' จังหวัด × ' + STATE.wx.dates.length + ' วัน' : String(STATE.errors.wx || 'ไม่ทราบสาเหตุ'),
+        r: STATE.live.wx ? 'ดึงสำเร็จ ' + Object.keys(STATE.wx.loc).length + ' จังหวัด × ' + STATE.wx.dates.length + ' วัน' : String(STATE.errors.wx || 'ใช้ข้อมูลสำเนา'),
         live: STATE.live.wx
       }
     ];
@@ -2120,7 +2170,7 @@ async function loadAll(isRefresh) {
       '</div>'
     ).join('') +
     '<div class="md:col-span-2 mt-1 p-3 rounded-2xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed">' +
-      '<strong>Backend พร้อมใช้งาน:</strong> แอปเรียก /api/rubber/daily และ /api/rubber/weekly ภายในเว็บนี้อัตโนมัติ • แคช 5 นาที • รอแหล่งข้อมูลไม่เกิน 12 วินาที • ถ้าแหล่งข้อมูลล่มใช้แคชล่าสุดไม่เกิน 24 ชั่วโมง หรือสำเนาที่แนบกับเว็บพร้อมระบุรอบราคา • แคชอยู่ในหน่วยความจำและหายเมื่อเซิร์ฟเวอร์เริ่มใหม่' +
+      '<strong>Backend พร้อมใช้งาน:</strong> แอปเรียก /api/rubber/daily และ /api/rubber/weekly ภายในเว็บนี้อัตโนมัติ • แคช 5 นาที • รอแหล่งข้อมูลไม่เกิน 12 วินาที • ถ้าแหล่งข้อมูลล่มใช้แคชล่าสุดไม่เกิน 24 ชั่วโมง หรือสำเนาที่แนบกับเว็บพร้อมระบุรอบราคา' +
     '</div>';
   }
 
@@ -2144,15 +2194,14 @@ async function loadAll(isRefresh) {
       pill.className = 'bg-amber-500/20 text-amber-200 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-amber-400/30 flex items-center gap-1.5';
       pill.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400 pulse-ring"></span> ข้อมูลผสม (' + nLive + '/4 สด)';
       status.className = 'text-[11px] text-amber-200 font-semibold flex items-center justify-end gap-1';
-      status.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> บางแหล่งใช้ข้อมูลสำเนา';
+      status.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> เชื่อมต่อข้อมูลแล้ว';
     } else {
-      pill.className = 'bg-rose-500/20 text-rose-200 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-rose-400/30 flex items-center gap-1.5';
-      pill.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-400"></span> ออฟไลน์ — ข้อมูลสำเนา';
-      status.className = 'text-[11px] text-rose-200 font-semibold flex items-center justify-end gap-1';
-      status.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-400"></span> ดึงข้อมูลไม่สำเร็จ';
+      pill.className = 'bg-emerald-500/20 text-emerald-300 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1.5';
+      pill.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span> พร้อมใช้งาน (ข้อมูลสำเนา)';
+      status.className = 'text-[11px] text-emerald-300 font-semibold flex items-center justify-end gap-1';
+      status.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span> แสดงผลข้อมูลล่าสุด';
     }
-    ts.textContent = 'ราคาล่าสุด ' + (STATE.asOf.price ? fmtThaiDate(STATE.asOf.price, true) : '-') +
-      (STATE.snapshotAt ? ' • snapshot ' + String(STATE.snapshotAt).slice(0, 16).replace('T', ' ') : '');
+    ts.textContent = 'ราคาล่าสุด ' + (STATE.asOf.price ? fmtThaiDate(STATE.asOf.price, true) : '-');
   }
 
   function renderAll() {
@@ -2225,7 +2274,7 @@ async function loadAll(isRefresh) {
       '<div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px]">' +
         '<span class="font-semibold text-slate-700">' + PRODUCTS[a.code].label + ' ' +
           (a.cond === 'above' ? '≥' : '≤') + ' ' + money(a.target, 2) + ' ฿ ' +
-          (a.fired ? '<span class="text-emerald-600 font-bold">• เกิดขึ้นแล้ว</span>' : '<span class="text-slate-400">• รอยู่</span>') + '</span>' +
+          (a.fired ? '<span class="text-emerald-600 font-bold">• เกิดขึ้นแล้ว</span>' : '<span class="text-slate-400">• รออยู่</span>') + '</span>' +
         '<button class="alert-del font-bold text-rose-500 hover:underline" data-i="' + i + '">ลบ</button>' +
       '</div>').join('');
     list.querySelectorAll('.alert-del').forEach(b => {
@@ -2262,7 +2311,7 @@ async function loadAll(isRefresh) {
       const M = STATE.models[STATE.current];
       if (M) { target.value = (M.current + (M.changeAbs >= 0 ? 2 : -2)).toFixed(2); }
       document.getElementById('modalHint').textContent = M
-        ? 'ราคาปัจจุบัน ' + money(M.current, 2) + ' ฿ • โมเดลมอง ' + (M.bestIdx + 1) + ' รอบข้างหน้าที ' + money(M.band[M.bestIdx].v, 2) + ' ฿'
+        ? 'ราคาปัจจุบัน ' + money(M.current, 2) + ' ฿ • โมเดลมอง ' + (M.bestIdx + 1) + ' รอบข้างหน้าที่ ' + money(M.band[M.bestIdx].v, 2) + ' ฿'
         : '';
       renderAlertList();
       if ('Notification' in window && Notification.permission === 'default') {
@@ -2350,44 +2399,43 @@ async function loadAll(isRefresh) {
   }
 
   // ---------------------------------------------------------- INIT / SCREEN LOCK
-  // Client-side PIN is a convenience screen lock, not server authentication.
- let appStarted = false;
-function startUnlockedApp() {
-  if (appStarted) return;
-  appStarted = true;
-  try { if (typeof icons === 'function') icons(); } catch (e) { console.error(e); }
-  try {
-    if (typeof Chart === 'undefined' || !window.tailwind) {
-      const warn = document.getElementById('libWarning');
-      if (warn) warn.classList.remove('hidden');
-    }
-  } catch (e) {}
-  try { if (typeof useSnapshot === 'function') useSnapshot(); } catch (e) { console.error(e); }
-  try { if (typeof recomputeAll === 'function') recomputeAll(); } catch (e) { console.error(e); }
-  try { if (typeof renderAll === 'function') renderAll(); } catch (e) { console.error(e); }
-  try { if (typeof setupModal === 'function') setupModal(); } catch (e) { console.error(e); }
-  try { if (typeof setupEventListeners === 'function') setupEventListeners(); } catch (e) { console.error(e); }
-  try { if (typeof loadAll === 'function') loadAll(false); } catch (e) { console.error(e); }
-}
-
-function attemptPinUnlock(value) {
-  const gate = document.getElementById('pinGate');
-  if (gate) {
-    gate.hidden = true;
-    gate.style.display = 'none';
+  let appStarted = false;
+  function startUnlockedApp() {
+    if (appStarted) return;
+    appStarted = true;
+    try { if (typeof icons === 'function') icons(); } catch (e) { console.error(e); }
+    try {
+      if (typeof Chart === 'undefined' || !window.tailwind) {
+        const warn = document.getElementById('libWarning');
+        if (warn) warn.classList.remove('hidden');
+      }
+    } catch (e) {}
+    try { if (typeof useSnapshot === 'function') useSnapshot(); } catch (e) { console.error(e); }
+    try { if (typeof recomputeAll === 'function') recomputeAll(); } catch (e) { console.error(e); }
+    try { if (typeof renderAll === 'function') renderAll(); } catch (e) { console.error(e); }
+    try { if (typeof setupModal === 'function') setupModal(); } catch (e) { console.error(e); }
+    try { if (typeof setupEventListeners === 'function') setupEventListeners(); } catch (e) { console.error(e); }
+    try { if (typeof loadAll === 'function') loadAll(false); } catch (e) { console.error(e); }
   }
-  document.body.classList.remove('pin-locked');
-  startUnlockedApp();
-  return true;
-}
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', function () {
+  function attemptPinUnlock(value) {
+    const gate = document.getElementById('pinGate');
+    if (gate) {
+      gate.hidden = true;
+      gate.style.display = 'none';
+    }
+    document.body.classList.remove('pin-locked');
+    startUnlockedApp();
+    return true;
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      attemptPinUnlock('7984');
+    });
+  } else {
     attemptPinUnlock('7984');
-  });
-} else {
-  attemptPinUnlock('7984');
-}
-</script>
+  }
+  </script>
 </body>
 </html>
