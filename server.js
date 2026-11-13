@@ -127,6 +127,108 @@ function preloadAllData() {
 }
 preloadAllData();
 
+// ----------------- ฟังก์ชันรวบรวมราคาล่าสุดและส่งแจ้งเตือนเข้า LINE -----------------
+
+function getLatestPricesSummary() {
+  preloadAllData();
+
+  const dailyRows = memoryStore.daily?.data || BUILTIN_DAILY_RECORDS;
+  let latestLatex = null;
+  let latestRss3 = null;
+  let latestCup = null;
+
+  // ดึงราคาล่าสุดจากตารางรายวัน
+  const sortedDaily = [...dailyRows].sort((a, b) => String(b.data_date).localeCompare(String(a.data_date)));
+  const latestDate = sortedDaily.length ? sortedDaily[0].data_date : null;
+
+  if (latestDate) {
+    const latexToday = sortedDaily.filter(r => r.data_date === latestDate && String(r.product_name).includes('น้ำยาง')).map(r => Number(r.day_price)).filter(Boolean);
+    const rss3Today = sortedDaily.filter(r => r.data_date === latestDate && (String(r.product_name).includes('แผ่น') || String(r.product_name).includes('RSS'))).map(r => Number(r.day_price)).filter(Boolean);
+    if (latexToday.length) latestLatex = (latexToday.reduce((a, b) => a + b, 0) / latexToday.length);
+    if (rss3Today.length) latestRss3 = (rss3Today.reduce((a, b) => a + b, 0) / rss3Today.length);
+  }
+
+  // Fallback จาก TRA / TLA หากไม่มีในรายวัน
+  if (!latestLatex) latestLatex = Number(tlaStore?.latest?.fresh_latex || memoryStore.tra?.local?.latex?.price || 77.00);
+  if (!latestRss3) latestRss3 = Number(memoryStore.tra?.local?.uss?.price || memoryStore.tra?.local?.rss3?.price || 82.65);
+
+  // ดึงราคายางก้อนถ้วยล่าสุด
+  const cupRows = memoryStore.cup?.data || [];
+  if (cupRows.length) {
+    const sortedCup = [...cupRows].sort((a, b) => (Number(a.year_th) * 10000 + Number(a.month) * 100 + Number(a.week)) - (Number(b.year_th) * 10000 + Number(b.month) * 100 + Number(b.week)));
+    latestCup = Number(sortedCup[sortedCup.length - 1].value);
+  }
+  if (!latestCup) latestCup = 41.65;
+
+  const dateStr = new Date().toLocaleDateString('th-TH', {
+    timeZone: 'Asia/Bangkok',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+
+  return {
+    dateStr,
+    latex: latestLatex.toFixed(2),
+    cup: latestCup.toFixed(2),
+    rss3: latestRss3.toFixed(2)
+  };
+}
+
+async function sendDailyLineNotification() {
+  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN || LINE_ACCESS_TOKEN;
+  const targetId = process.env.LINE_TARGET_ID || LINE_TARGET_ID;
+
+  if (!token) {
+    throw new Error('ยังไม่ได้ตั้งค่า LINE_CHANNEL_ACCESS_TOKEN ใน Environment Variables บน Render');
+  }
+
+  const summary = getLatestPricesSummary();
+  const text = [
+    `🌱 ParaTrend สรุปราคายางพารา`,
+    `📅 ประจำวันที่ ${summary.dateStr} (08:00 น.)`,
+    `━━━━━━━━━━━━━━`,
+    `💧 น้ำยางสด: ${summary.latex} บาท/กก.`,
+    `🥣 ยางก้อนถ้วย: ${summary.cup} บาท/กก.`,
+    `📜 ยางแผ่นดิบชั้น 3: ${summary.rss3} บาท/กก.`,
+    `━━━━━━━━━━━━━━`,
+    `📊 ดูกราฟพยากรณ์และคำนวณกำไร:`,
+    `https://paratrend-rubber.onrender.com`
+  ].join('\n');
+
+  const url = targetId
+    ? 'https://api.line.me/v2/bot/message/push'
+    : 'https://api.line.me/v2/bot/message/broadcast';
+
+  const payload = targetId
+    ? { to: targetId, messages: [{ type: 'text', text }] }
+    : { messages: [{ type: 'text', text }] };
+
+  await axios.post(url, payload, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    timeout: 15000
+  });
+
+  return { ok: true, summary, text };
+}
+
+// ตั้งเวลาส่งแจ้งเตือนอัตโนมัติทุกวัน เวลา 08:00 น. (ตามเวลาประเทศไทย)
+cron.schedule('0 8 * * *', async () => {
+  console.log('[Cron 08:00] กำลังส่งแจ้งเตือนราคายางพาราเข้า LINE...');
+  try {
+    await sendDailyLineNotification();
+    console.log('[Cron 08:00] ส่งแจ้งเตือนเข้า LINE สำเร็จ!');
+  } catch (err) {
+    console.error('[Cron 08:00] ส่งแจ้งเตือนเข้า LINE ไม่สำเร็จ:', err.message);
+  }
+}, {
+  scheduled: true,
+  timezone: 'Asia/Bangkok'
+});
+
 // ----------------- API Endpoints -----------------
 
 app.get('/healthz', (req, res) => res.status(200).send('OK'));
@@ -138,9 +240,9 @@ app.get('/api/rubber/daily', (req, res) => {
   const normalizedData = (memoryStore.daily.data || []).map(row => {
     const name = String(row.product_name || '');
     let cleanName = name;
-    if (name.includes('น้ำยาง')) cleanName = 'น้ำยางสด คละ';
-    else if (name.includes('แผ่นดิบ')) cleanName = 'ยางแผ่นดิบ ชั้น 3';
-    else if (name.includes('ก้อน')) cleanName = 'ยางก้อน คละ';
+    if (name.includes('น้ำยาง')) cleanName = 'น้ำยางพาราสด';
+    else if (name.includes('แผ่น')) cleanName = 'ยางพาราแผ่นดิบ ชั้น 3';
+    else if (name.includes('ก้อน')) cleanName = 'ยางก้อนถ้วย';
     return { ...row, product_name: cleanName };
   });
 
@@ -163,10 +265,20 @@ app.get('/api/rubber/tra', (req, res) => {
   res.json(memoryStore.tra);
 });
 
-// Endpoint ส่วนที่ 2: ส่งข้อมูลสมาคมน้ำยางข้นไทย (TLA)
 app.get('/api/rubber/tla', (req, res) => {
   loadTlaFile();
   res.json(tlaStore);
+});
+
+// Endpoint สำหรับกดทดสอบส่ง LINE หรือเรียกผ่าน GitHub Actions ตอน 08:00 น.
+app.all('/api/line/daily-notify', async (req, res) => {
+  try {
+    const result = await sendDailyLineNotification();
+    res.json({ ok: true, message: 'ส่งแจ้งเตือน LINE สำเร็จ', preview: result.text });
+  } catch (err) {
+    const apiErr = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+    res.status(500).json({ ok: false, error: apiErr });
+  }
 });
 
 app.listen(PORT, () => {
