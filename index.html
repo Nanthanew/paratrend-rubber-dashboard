@@ -1068,15 +1068,23 @@ window.PARATREND_SNAPSHOT = {
     const P = PRODUCTS[id];
     const data = STATE.products[id] || {};
     let series = [];
+    let activeBasis = P.basis;
 
-    if (P.basis === 'daily' && data.daily && data.daily.length) {
-      series = data.daily.map(t => ({ date: t[0], price: t[1], n: t[2], label: fmtShort(t[0]) }));
-    } else if (data.weekly && data.weekly.length) {
-      series = data.weekly.map(t => ({ date: null, ym: t[0] + '/' + t[1] + '/' + t[2], price: t[3], n: 1, label: 'สัปดาห์ ' + t[2] + '/' + TH_MONTH[t[1] - 1].slice(0, 3) + String(t[0]).slice(-2) }));
+    if (P.basis === 'daily' && data.daily && data.daily.length >= 6) {
+      series = data.daily.map(t => ({ date: t[0], price: Number(t[1]), n: t[2] || 1, label: fmtShort(t[0]) }));
+    } else if (data.weekly && data.weekly.length >= 6) {
+      activeBasis = 'weekly';
+      series = data.weekly.map(t => ({
+        date: null,
+        ym: t[0] + '/' + t[1] + '/' + t[2],
+        price: Number(t[3]),
+        n: 1,
+        label: 'สัปดาห์ ' + t[2] + '/' + TH_MONTH[t[1] - 1].slice(0, 3) + String(t[0]).slice(-2)
+      }));
     }
     if (series.length < 6) return null;
 
-    const H = FORECAST_STEPS[P.basis] || 7;
+    const H = FORECAST_STEPS[activeBasis] || 7;
     const fitWindow = series.slice(-60).map(s => s.price);
     const model = fitBest(fitWindow, H);
     if (!model) return null;
@@ -1086,7 +1094,7 @@ window.PARATREND_SNAPSHOT = {
     const band = model.bands;
 
     let projDates = [];
-    if (P.basis === 'daily') {
+    if (activeBasis === 'daily') {
       projDates = buildProjectionDates(last.date, H);
     } else {
       projDates = model.forecast.map((_, i) => 'สัปดาห์ +' + (i + 1));
@@ -1096,13 +1104,13 @@ window.PARATREND_SNAPSHOT = {
     band.forEach((b, i) => { if (b.v > band[bestIdx].v) bestIdx = i; });
 
     let staleness = 0;
-    if (P.basis === 'daily') {
+    if (activeBasis === 'daily' && last.date) {
       let cur = last.date, guard = 0;
       const todayISO = new Date().toISOString().slice(0, 10);
       while (cur < todayISO && guard < 30) { cur = addDays(cur, 1); if (!isWeekend(cur)) staleness++; guard++; }
     }
 
-    const conf = confidenceOf(model, staleness, P.basis);
+    const conf = confidenceOf(model, staleness, activeBasis);
     const changeAbs = last.price - prev.price;
     const changePct = pct(last.price, prev.price);
     const target = h => band[Math.min(h, band.length) - 1] ? band[Math.min(h, band.length) - 1].v : null;
@@ -1141,16 +1149,34 @@ window.PARATREND_SNAPSHOT = {
 
   function productCodeFromDailyName(name) {
     const clean = String(name || '').trim();
+    const up = clean.toUpperCase();
     for (const id of PRODUCT_ORDER) {
       const p = PRODUCTS[id];
       if (clean.includes(p.label) || (p.dailyName && clean.includes(p.dailyName))) {
         return id;
       }
     }
-    if (clean.includes('น้ำยาง')) return 'latex';
-    if (clean.includes('แผ่นดิบ') || clean.includes('RSS')) return 'rss3';
-    if (clean.includes('ก้อน')) return 'cup';
+    if (clean.includes('น้ำยาง') || up.includes('LATEX')) return 'latex';
+    if (clean.includes('แผ่น') || clean.includes('รมควัน') || up.includes('RSS') || up.includes('USS')) return 'rss3';
+    if (clean.includes('ก้อน') || clean.includes('ถ้วย') || up.includes('CUP')) return 'cup';
     return null;
+  }
+
+  function mergeDailySeries(baseArr, incomingArr) {
+    const map = {};
+    (baseArr || []).forEach(pt => {
+      if (pt && pt[0] && isFinite(Number(pt[1])) && Number(pt[1]) > 0) {
+        const d = String(pt[0]).slice(0, 10);
+        map[d] = [d, Number(pt[1]), pt[2] || 1];
+      }
+    });
+    (incomingArr || []).forEach(pt => {
+      if (pt && pt[0] && isFinite(Number(pt[1])) && Number(pt[1]) > 0) {
+        const d = String(pt[0]).slice(0, 10);
+        map[d] = [d, Number(pt[1]), pt[2] || 1];
+      }
+    });
+    return Object.keys(map).sort().map(d => map[d]);
   }
 
   function ingestDaily(rows) {
@@ -1160,38 +1186,43 @@ window.PARATREND_SNAPSHOT = {
     const dateSet = {};
 
     rows.forEach(r => {
-      const name = String(r.product_name || '').trim();
-      let code = productCodeFromDailyName(name);
-      if (!code) {
-        if (name.includes('น้ำยาง')) code = 'latex';
-        else if (name.includes('แผ่นดิบ') || name.includes('RSS')) code = 'rss3';
-        else if (name.includes('ก้อน')) code = 'cup';
-      }
+      const name = String(r.product_name || r.product || r.name || r.type || '').trim();
+      const code = productCodeFromDailyName(name);
       if (!code) return;
 
-      const price = Number(r.day_price);
+      const price = Number(r.day_price ?? r.price ?? r.value ?? r.local_price);
       if (!isFinite(price) || price <= 0) return;
 
-      (byProductDate[code] = byProductDate[code] || {});
-      (byProductDate[code][r.data_date] = byProductDate[code][r.data_date] || []).push(price);
-      dateSet[r.data_date] = 1;
+      const dStr = String(r.data_date || r.date || '').slice(0, 10);
+      if (!dStr) return;
 
-      const key = code + '|' + r.market_name;
-      if (!hist[key]) hist[key] = { code: code, market: r.market_name, province: r.province, pts: [] };
-      hist[key].pts.push([r.data_date, price]);
+      (byProductDate[code] = byProductDate[code] || {});
+      (byProductDate[code][dStr] = byProductDate[code][dStr] || []).push(price);
+      dateSet[dStr] = 1;
+
+      const mkt = r.market_name || r.market || 'ราคากลาง';
+      const prv = r.province || '-';
+      const key = code + '|' + mkt;
+      if (!hist[key]) hist[key] = { code: code, market: mkt, province: prv, pts: [] };
+      hist[key].pts.push([dStr, price]);
     });
 
     const dates = Object.keys(dateSet).sort();
     let latest = null;
+    const S = window.PARATREND_SNAPSHOT || {};
+
     PRODUCT_ORDER.forEach(id => {
       const map = byProductDate[id] || {};
-      const dailyArr = dates.filter(d => map[d]).map(d => {
+      const incoming = dates.filter(d => map[d]).map(d => {
         const v = median(map[d]);
         return [d, Math.round(v * 100) / 100, map[d].length];
       });
-      if (dailyArr.length) {
-        STATE.products[id].daily = dailyArr;
-        latest = dailyArr[dailyArr.length - 1][0];
+      const base = (S.daily && S.daily[id]) ? S.daily[id] : (STATE.products[id].daily || []);
+      const merged = mergeDailySeries(base, incoming);
+      if (merged.length) {
+        STATE.products[id].daily = merged;
+        const lastDate = merged[merged.length - 1][0];
+        if (!latest || lastDate > latest) latest = lastDate;
       }
     });
 
@@ -1201,14 +1232,19 @@ window.PARATREND_SNAPSHOT = {
     });
 
     if (latest) {
-      STATE.marketRows = [];
+      const newRows = [];
       Object.keys(STATE.marketHist).forEach(k => {
         const h = STATE.marketHist[k];
         const lastPt = h.pts[h.pts.length - 1];
         if (lastPt && lastPt[0] === latest) {
-          STATE.marketRows.push({ code: h.code, market: h.market, province: h.province, price: lastPt[1] });
+          newRows.push({ code: h.code, market: h.market, province: h.province, price: lastPt[1] });
         }
       });
+      if (newRows.length) {
+        const updatedCodes = new Set(newRows.map(r => r.code));
+        const keptRows = (STATE.marketRows || []).filter(r => !updatedCodes.has(r.code));
+        STATE.marketRows = newRows.concat(keptRows);
+      }
       STATE.asOf.price = latest;
     }
     return !!latest;
@@ -1219,8 +1255,20 @@ window.PARATREND_SNAPSHOT = {
     const arr = rows.map(r => [Number(r.year_th), Number(r.month), Number(r.week), Number(r.value)])
                     .filter(r => r.every(v => isFinite(v)))
                     .sort((a, b) => (a[0] * 10000 + a[1] * 100 + a[2]) - (b[0] * 10000 + b[1] * 100 + b[2]));
-    if (arr.length) STATE.products[id].weekly = arr;
-    return arr.length > 0;
+    if (arr.length) {
+      const S = window.PARATREND_SNAPSHOT || {};
+      const base = (S.weekly && S.weekly[id]) ? S.weekly[id] : [];
+      if (arr.length < 8 && base.length) {
+        const map = {};
+        base.forEach(w => { map[w[0] + '-' + w[1] + '-' + w[2]] = w; });
+        arr.forEach(w => { map[w[0] + '-' + w[1] + '-' + w[2]] = w; });
+        STATE.products[id].weekly = Object.values(map).sort((a, b) => (a[0] * 10000 + a[1] * 100 + a[2]) - (b[0] * 10000 + b[1] * 100 + b[2]));
+      } else {
+        STATE.products[id].weekly = arr;
+      }
+      return true;
+    }
+    return false;
   }
 
   function ingestFx(json) {
@@ -1247,14 +1295,14 @@ window.PARATREND_SNAPSHOT = {
     if (!S) return;
     if (S.daily) {
       PRODUCT_ORDER.forEach(id => {
-        if (S.daily[id] && (!STATE.products[id].daily || !STATE.products[id].daily.length)) {
-          STATE.products[id].daily = S.daily[id].slice();
+        if (S.daily[id]) {
+          STATE.products[id].daily = mergeDailySeries(S.daily[id], STATE.products[id].daily);
         }
       });
     }
     if (S.weekly) {
       PRODUCT_ORDER.forEach(id => {
-        if (S.weekly[id] && (!STATE.products[id].weekly || !STATE.products[id].weekly.length)) {
+        if (S.weekly[id] && (!STATE.products[id].weekly || STATE.products[id].weekly.length < 8)) {
           STATE.products[id].weekly = S.weekly[id].slice();
         }
       });
@@ -1288,7 +1336,6 @@ window.PARATREND_SNAPSHOT = {
 
     STATE.errors = {};
 
-    // 1. โหลดและแสดงผลจาก Snapshot ทันทีเพื่อให้หน้าเว็บพร้อมใช้งานในเสี้ยววินาที
     try {
       useSnapshot();
       recomputeAll();
@@ -1297,7 +1344,6 @@ window.PARATREND_SNAPSHOT = {
       console.error('Snapshot render error:', e);
     }
 
-    // 2. ดึงข้อมูลสดจาก API เบื้องหลัง (ราคายาง, อัตราแลกเปลี่ยน, ปริมาณฝน, สมาคม TRA)
     try {
       const res = await Promise.allSettled([
         jget(API.daily, 12000),
@@ -1309,7 +1355,6 @@ window.PARATREND_SNAPSHOT = {
         jget('/api/rubber/tra', 8000)
       ]);
 
-      // Daily prices
       if (res[0].status === 'fulfilled' && res[0].value) {
         const d = res[0].value;
         const rows = Array.isArray(d) ? d : (d.data || d.rows || []);
@@ -1321,24 +1366,29 @@ window.PARATREND_SNAPSHOT = {
         STATE.errors.prices = res[0].reason?.message || 'ดึงราคารายวันไม่สำเร็จ';
       }
 
-      // หากมีข้อมูลสดจาก TRA ของวันนี้ ให้นำมาเติมจุดราคาล่าสุดด้วย
+      // อัปเดตราคารายวันล่าสุดของยางแผ่นดิบชั้น 3 ทุกวันจาก TRA API หรือการ์ด TRA
+      const activeDate = STATE.asOf.price || new Date().toISOString().slice(0, 10);
+      let latestRss3Price = null;
+
       if (res[6].status === 'fulfilled' && res[6].value && res[6].value.local) {
-        const tra = res[6].value;
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const lPrice = Number(tra.local.latex?.price);
-        const rPrice = Number(tra.local.rss3?.price);
-        if (isFinite(lPrice) && lPrice > 0 && STATE.products.latex.daily.length) {
-          const lastL = STATE.products.latex.daily[STATE.products.latex.daily.length - 1];
-          if (lastL[0] < todayStr) STATE.products.latex.daily.push([todayStr, lPrice, 2]);
-        }
-        if (isFinite(rPrice) && rPrice > 0 && STATE.products.rss3.daily.length) {
-          const lastR = STATE.products.rss3.daily[STATE.products.rss3.daily.length - 1];
-          if (lastR[0] < todayStr) STATE.products.rss3.daily.push([todayStr, rPrice, 4]);
-        }
-        STATE.asOf.price = todayStr;
+        const tra = res[6].value.local;
+        latestRss3Price = Number(tra.uss?.price || tra.rss3?.price);
+      }
+      if (!isFinite(latestRss3Price) || latestRss3Price <= 0) {
+        const domUss = parseFloat(document.getElementById('traLocalUss')?.textContent || '');
+        const domRss3 = parseFloat(document.getElementById('traLocalRss3')?.textContent || '');
+        latestRss3Price = isFinite(domUss) && domUss > 0 ? domUss : (isFinite(domRss3) && domRss3 > 0 ? domRss3 : null);
       }
 
-      // Weekly prices
+      const snapRss3 = (window.PARATREND_SNAPSHOT && window.PARATREND_SNAPSHOT.daily && window.PARATREND_SNAPSHOT.daily.rss3) || [];
+      STATE.products.rss3.daily = mergeDailySeries(snapRss3, STATE.products.rss3.daily);
+      if (isFinite(latestRss3Price) && latestRss3Price > 0) {
+        const lastRss3Pt = STATE.products.rss3.daily[STATE.products.rss3.daily.length - 1];
+        if (!lastRss3Pt || lastRss3Pt[0] < activeDate) {
+          STATE.products.rss3.daily = mergeDailySeries(STATE.products.rss3.daily, [[activeDate, latestRss3Price, 4]]);
+        }
+      }
+
       let wkOk = false;
       ['latex', 'cup', 'rss3'].forEach((id, idx) => {
         const r = res[1 + idx];
@@ -1352,14 +1402,12 @@ window.PARATREND_SNAPSHOT = {
       });
       STATE.live.weekly = wkOk;
 
-      // FX
       if (res[4].status === 'fulfilled' && ingestFx(res[4].value)) {
         STATE.live.fx = true;
       } else if (res[4].status === 'rejected') {
         STATE.errors.fx = res[4].reason?.message || 'ดึงค่าเงินไม่สำเร็จ';
       }
 
-      // Weather
       if (res[5].status === 'fulfilled' && ingestWx(res[5].value)) {
         STATE.live.wx = true;
       } else if (res[5].status === 'rejected') {
