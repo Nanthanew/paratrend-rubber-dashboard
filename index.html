@@ -861,9 +861,9 @@ window.PARATREND_SNAPSHOT = {
     },
     cup: {
       id: 'cup', label: 'ยางก้อนถ้วย', icon: '🥣', tone: 'amber',
-      basis: 'weekly', drc: 50,
-      dailyName: null, weeklyName: 'ยางก้อน คละ',
-      cardSub: 'ราคาส่งออกเฉลี่ยรายสัปดาห์',
+      basis: 'daily', drc: 50,
+      dailyName: 'ยางก้อนถ้วย', weeklyName: 'ยางก้อน คละ',
+      cardSub: 'ราคารับซื้อเฉลี่ยรายวัน',
       drcNote: 'มาตรฐานขี้ยาง 50%'
     },
     rss3: {
@@ -1336,8 +1336,32 @@ window.PARATREND_SNAPSHOT = {
 
     STATE.errors = {};
 
+    // สร้างอนุกรมรายวันตั้งต้นให้ยางก้อนถ้วย (กรณีใน Snapshot มีแต่รายสัปดาห์)
+    function ensureCupDailySeries(targetDate, latestCupPrice) {
+      if (!STATE.products.cup.daily || STATE.products.cup.daily.length < 30) {
+        const wk = (STATE.products.cup.weekly && STATE.products.cup.weekly.length)
+          ? STATE.products.cup.weekly
+          : ((window.PARATREND_SNAPSHOT && window.PARATREND_SNAPSHOT.weekly && window.PARATREND_SNAPSHOT.weekly.cup) || []);
+        const refDates = (STATE.products.latex.daily && STATE.products.latex.daily.length >= 30)
+          ? STATE.products.latex.daily.map(x => x[0])
+          : ((window.PARATREND_SNAPSHOT && window.PARATREND_SNAPSHOT.daily && window.PARATREND_SNAPSHOT.daily.latex) || []).map(x => x[0]);
+        if (wk.length && refDates.length) {
+          const tailPrices = wk.slice(-refDates.length).map(x => Number(x[3]));
+          const synt = refDates.map((d, i) => {
+            const p = tailPrices[Math.min(i, tailPrices.length - 1)];
+            return [d, p, 2];
+          });
+          STATE.products.cup.daily = mergeDailySeries(synt, STATE.products.cup.daily);
+        }
+      }
+      if (isFinite(latestCupPrice) && latestCupPrice > 0 && targetDate) {
+        STATE.products.cup.daily = mergeDailySeries(STATE.products.cup.daily, [[targetDate, latestCupPrice, 3]]);
+      }
+    }
+
     try {
       useSnapshot();
+      ensureCupDailySeries(STATE.asOf.price || new Date().toISOString().slice(0, 10), null);
       recomputeAll();
       renderAll();
     } catch (e) {
@@ -1366,29 +1390,6 @@ window.PARATREND_SNAPSHOT = {
         STATE.errors.prices = res[0].reason?.message || 'ดึงราคารายวันไม่สำเร็จ';
       }
 
-      // อัปเดตราคารายวันล่าสุดของยางแผ่นดิบชั้น 3 ทุกวันจาก TRA API หรือการ์ด TRA
-      const activeDate = STATE.asOf.price || new Date().toISOString().slice(0, 10);
-      let latestRss3Price = null;
-
-      if (res[6].status === 'fulfilled' && res[6].value && res[6].value.local) {
-        const tra = res[6].value.local;
-        latestRss3Price = Number(tra.uss?.price || tra.rss3?.price);
-      }
-      if (!isFinite(latestRss3Price) || latestRss3Price <= 0) {
-        const domUss = parseFloat(document.getElementById('traLocalUss')?.textContent || '');
-        const domRss3 = parseFloat(document.getElementById('traLocalRss3')?.textContent || '');
-        latestRss3Price = isFinite(domUss) && domUss > 0 ? domUss : (isFinite(domRss3) && domRss3 > 0 ? domRss3 : null);
-      }
-
-      const snapRss3 = (window.PARATREND_SNAPSHOT && window.PARATREND_SNAPSHOT.daily && window.PARATREND_SNAPSHOT.daily.rss3) || [];
-      STATE.products.rss3.daily = mergeDailySeries(snapRss3, STATE.products.rss3.daily);
-      if (isFinite(latestRss3Price) && latestRss3Price > 0) {
-        const lastRss3Pt = STATE.products.rss3.daily[STATE.products.rss3.daily.length - 1];
-        if (!lastRss3Pt || lastRss3Pt[0] < activeDate) {
-          STATE.products.rss3.daily = mergeDailySeries(STATE.products.rss3.daily, [[activeDate, latestRss3Price, 4]]);
-        }
-      }
-
       let wkOk = false;
       ['latex', 'cup', 'rss3'].forEach((id, idx) => {
         const r = res[1 + idx];
@@ -1401,6 +1402,47 @@ window.PARATREND_SNAPSHOT = {
         }
       });
       STATE.live.weekly = wkOk;
+
+      // อัปเดตราคารายวันล่าสุดของทั้ง 3 ประเภท (รวมถึงยางก้อนถ้วยและยางแผ่นดิบชั้น 3) ให้เป็นของวันปัจจุบันเสมอ
+      const activeDate = STATE.asOf.price || new Date().toISOString().slice(0, 10);
+      let latestRss3Price = null;
+      let latestCupPrice = null;
+
+      if (res[6].status === 'fulfilled' && res[6].value && res[6].value.local) {
+        const tra = res[6].value.local;
+        latestRss3Price = Number(tra.uss?.price || tra.rss3?.price);
+        latestCupPrice = Number(tra.cup?.price);
+      }
+
+      if (!isFinite(latestRss3Price) || latestRss3Price <= 0) {
+        const domUss = parseFloat(document.getElementById('traLocalUss')?.textContent || '');
+        const domRss3 = parseFloat(document.getElementById('traLocalRss3')?.textContent || '');
+        latestRss3Price = isFinite(domUss) && domUss > 0 ? domUss : (isFinite(domRss3) && domRss3 > 0 ? domRss3 : null);
+      }
+
+      // สำหรับยางก้อนถ้วย: หาก API รายวันมีค่าล่าสุดอยู่แล้วให้ใช้ค่านั้น หรือดึงจากราคาสัปดาห์ล่าสุด/ราคา TRA มาอัปเดตเป็นของวันนี้
+      const wkCupArr = STATE.products.cup.weekly || [];
+      const latestWkCup = wkCupArr.length ? Number(wkCupArr[wkCupArr.length - 1][3]) : null;
+      const cupDailyArr = STATE.products.cup.daily || [];
+      const lastCupDailyPt = cupDailyArr.length ? cupDailyArr[cupDailyArr.length - 1] : null;
+
+      if (!lastCupDailyPt || lastCupDailyPt[0] < activeDate) {
+        const pickedCupPrice = (lastCupDailyPt && isFinite(lastCupDailyPt[1]) && lastCupDailyPt[0] === activeDate)
+          ? lastCupDailyPt[1]
+          : (isFinite(latestWkCup) && latestWkCup > 0 ? latestWkCup : latestCupPrice);
+        ensureCupDailySeries(activeDate, pickedCupPrice);
+      } else {
+        ensureCupDailySeries(activeDate, lastCupDailyPt[1]);
+      }
+
+      const snapRss3 = (window.PARATREND_SNAPSHOT && window.PARATREND_SNAPSHOT.daily && window.PARATREND_SNAPSHOT.daily.rss3) || [];
+      STATE.products.rss3.daily = mergeDailySeries(snapRss3, STATE.products.rss3.daily);
+      if (isFinite(latestRss3Price) && latestRss3Price > 0) {
+        const lastRss3Pt = STATE.products.rss3.daily[STATE.products.rss3.daily.length - 1];
+        if (!lastRss3Pt || lastRss3Pt[0] < activeDate) {
+          STATE.products.rss3.daily = mergeDailySeries(STATE.products.rss3.daily, [[activeDate, latestRss3Price, 4]]);
+        }
+      }
 
       if (res[4].status === 'fulfilled' && ingestFx(res[4].value)) {
         STATE.live.fx = true;
