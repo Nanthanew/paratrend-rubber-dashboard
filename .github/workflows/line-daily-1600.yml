@@ -1,0 +1,17 @@
+name: Daily LINE Rubber Price Notify (16:00 TH)
+
+on:
+  schedule:
+    # 09:00 UTC = 16:00 น. ตามเวลาประเทศไทยของทุกวัน
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake up Render Server & Send 16:00 LINE Notification
+        run: |
+          curl -s -o /dev/null --retry 5 --retry-delay 10 --max-time 60 https://paratrend-rubber.onrender.com/healthz
+          sleep 5
+          curl -i -X POST https://paratrend-rubber.onrender.com/api/line/daily-notify
