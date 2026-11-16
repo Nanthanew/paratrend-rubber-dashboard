@@ -325,22 +325,28 @@ async function getLatestPricesSummary() {
     rss3Info = { price: Number(memoryStore.tra?.local?.uss?.price || memoryStore.tra?.local?.rss3?.price || 82.65), date: todayIso, isToday: false };
   }
 
-  // ยางก้อนถ้วย (รองรับทั้ง Array [y,m,w,price] และ Object {value/price})
+  // ยางก้อนถ้วย (เรียงลำดับ ปี/เดือน/สัปดาห์ ให้ถูกต้องก่อนดึงราคาล่าสุดเสมอ)
   let cupInfo = findLatestOrPrev(name => name.includes('ก้อน') || name.includes('ถ้วย'));
   if (!cupInfo || !isFinite(cupInfo.price) || cupInfo.price <= 0) {
     const cupRows = memoryStore.cup?.data || [];
-    const validCupPrices = cupRows.map(r => {
-      if (Array.isArray(r)) return Number(r[3] ?? r[1]);
-      return Number(r.value ?? r.price ?? r.day_price ?? r.week_price);
-    }).filter(v => isFinite(v) && v > 0);
+    const parsedCup = cupRows.map(r => {
+      if (Array.isArray(r)) {
+        return { sortKey: Number(r[0]) * 10000 + Number(r[1]) * 100 + Number(r[2]), price: Number(r[3]) };
+      }
+      const y = Number(r.year_th || r.year || 0);
+      const m = Number(r.month || 0);
+      const w = Number(r.week || 0);
+      const p = Number(r.value ?? r.price ?? r.day_price ?? r.week_price);
+      return { sortKey: y * 10000 + m * 100 + w, price: p };
+    }).filter(x => isFinite(x.price) && x.price > 0);
 
-    if (validCupPrices.length) {
-      cupInfo = { price: validCupPrices[validCupPrices.length - 1], date: rss3Info.date || todayIso, isToday: false };
+    if (parsedCup.length) {
+      parsedCup.sort((a, b) => a.sortKey - b.sortKey);
+      cupInfo = { price: parsedCup[parsedCup.length - 1].price, date: rss3Info.date || todayIso, isToday: false };
     } else {
       cupInfo = { price: 41.65, date: todayIso, isToday: false };
     }
   }
-
   const effectiveDate = [latexInfo.date, rss3Info.date].sort((a, b) => b.localeCompare(a))[0] || todayIso;
   const isFallbackPrev = effectiveDate < todayIso;
 
