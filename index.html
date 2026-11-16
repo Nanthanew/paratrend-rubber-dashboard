@@ -354,21 +354,35 @@
             if (!d || !Array.isArray(d.daily_table)) return;
             if (d.latest) {
               setTxt('tlaLatestDateBadge', d.latest.date_th);
-              if (d.latest.fresh_latex) setTxt('tlaFreshPrice', Number(d.latest.fresh_latex).toFixed(2));
-              if (d.latest.fob_bulk_usd) setTxt('tlaFobPrice', Number(d.latest.fob_bulk_usd).toLocaleString('en-US', { minimumFractionDigits: 2 }));
+              const freshEl = document.getElementById('tlaFreshPrice');
+              if (freshEl) {
+                freshEl.textContent = (d.latest.fresh_latex != null && d.latest.fresh_latex !== '-')
+                  ? Number(d.latest.fresh_latex).toFixed(2)
+                  : '-';
+              }
+              const fobEl = document.getElementById('tlaFobPrice');
+              if (fobEl) {
+                fobEl.textContent = (d.latest.fob_bulk_usd != null && d.latest.fob_bulk_usd !== '-')
+                  ? Number(d.latest.fob_bulk_usd).toLocaleString('en-US', { minimumFractionDigits: 2 })
+                  : '-';
+              }
             }
             if (d.average) {
-              if (d.average.fresh_latex) setTxt('tlaAvgFresh', Number(d.average.fresh_latex).toFixed(2));
-              if (d.average.fob_bulk_usd) setTxt('tlaAvgFob', Number(d.average.fob_bulk_usd).toLocaleString('en-US', { minimumFractionDigits: 2 }));
+              setTxt('tlaAvgFresh', d.average.fresh_latex != null ? Number(d.average.fresh_latex).toFixed(2) : '-');
+              setTxt('tlaAvgFob', d.average.fob_bulk_usd != null ? Number(d.average.fob_bulk_usd).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-');
             }
             const tbody = document.getElementById('tlaDailyTableBody');
             if (tbody && d.daily_table.length > 0) {
-              tbody.innerHTML = d.daily_table.map(row => `
+              tbody.innerHTML = d.daily_table.map(row => {
+                const freshTxt = (row.fresh_latex != null && row.fresh_latex !== '-') ? Number(row.fresh_latex).toFixed(2) : '-';
+                const fobTxt = (row.fob_bulk_usd != null && row.fob_bulk_usd !== '-') ? Number(row.fob_bulk_usd).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-';
+                return `
                 <tr class="hover:bg-sky-50/60">
                   <td class="py-2 px-3 font-medium">${row.date_th || row.data_date}</td>
-                  <td class="py-2 px-3 text-right font-bold text-sky-700">${row.fresh_latex != null ? Number(row.fresh_latex).toFixed(2) : '-'}</td>
-                  <td class="py-2 px-3 text-right">${row.fob_bulk_usd != null ? Number(row.fob_bulk_usd).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}</td>
-                </tr>`).join('');
+                  <td class="py-2 px-3 text-right font-bold ${freshTxt === '-' ? 'text-slate-400' : 'text-sky-700'}">${freshTxt}</td>
+                  <td class="py-2 px-3 text-right ${fobTxt === '-' ? 'text-slate-400' : ''}">${fobTxt}</td>
+                </tr>`;
+              }).join('');
             }
           }).catch(() => {});
         })();
