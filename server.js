@@ -82,6 +82,125 @@ let tlaStore = {
   ]
 };
 
+const TH_MONTHS_FULL = [
+  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+];
+
+function formatThaiDateFull(isoDate) {
+  const [y, m, d] = String(isoDate).split('-').map(Number);
+  if (!y || !m || !d) return isoDate;
+  return `${d} ${TH_MONTHS_FULL[m - 1]} ${y + 543}`;
+}
+
+async function syncTlaFromWeb() {
+  try {
+    const res = await axios.get('https://www.tlalatex.org/th/price', {
+      timeout: 10000,
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    });
+    const html = String(res.data || '');
+    const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+    const cellRegex = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
+    const stripTags = s => s.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+
+    const parsedRows = [];
+    let match;
+    while ((match = rowRegex.exec(html)) !== null) {
+      const cells = [];
+      let cMatch;
+      while ((cMatch = cellRegex.exec(match[1])) !== null) {
+        cells.push(stripTags(cMatch[1]));
+      }
+      if (cells.length >= 3) {
+        const dateText = cells[0];
+        const mIdx = TH_MONTHS_FULL.findIndex(m => dateText.includes(m));
+        if (mIdx !== -1) {
+          const nums = dateText.match(/\d+/g);
+          if (nums && nums.length >= 2) {
+            const day = String(nums[0]).padStart(2, '0');
+            const month = String(mIdx + 1).padStart(2, '0');
+            let yr = Number(nums[nums.length - 1]);
+            if (yr > 2400) yr -= 543;
+            const iso = `${yr}-${month}-${day}`;
+            const fresh = parseFloat(cells[1].replace(/,/g, ''));
+            const fob = parseFloat(cells[2].replace(/,/g, ''));
+            parsedRows.push({
+              data_date: iso,
+              date_th: formatThaiDateFull(iso),
+              fresh_latex: isFinite(fresh) && fresh > 0 ? fresh : null,
+              fob_bulk_usd: isFinite(fob) && fob > 0 ? fob : null
+            });
+          }
+        }
+      }
+    }
+
+    if (parsedRows.length > 0) {
+      const map = {};
+      (tlaStore.daily_table || []).forEach(r => { if (r.data_date) map[r.data_date] = r; });
+      parsedRows.forEach(r => { map[r.data_date] = r; });
+      tlaStore.daily_table = Object.values(map).sort((a, b) => b.data_date.localeCompare(a.data_date));
+    }
+  } catch (err) {}
+}
+
+function buildDailyCalendarTla() {
+  const map = {};
+  (tlaStore.daily_table || []).forEach(r => {
+    if (r && r.data_date) map[r.data_date] = r;
+  });
+
+  const nowTH = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+  const curY = nowTH.getFullYear();
+  const curM = nowTH.getMonth() + 1;
+  const curD = nowTH.getDate();
+
+  for (let d = 1; d <= curD; d++) {
+    const iso = `${curY}-${String(curM).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    if (!map[iso]) {
+      map[iso] = {
+        data_date: iso,
+        date_th: formatThaiDateFull(iso),
+        fresh_latex: null,
+        fob_bulk_usd: null
+      };
+    } else {
+      map[iso].date_th = formatThaiDateFull(iso);
+    }
+  }
+
+  const fullList = Object.values(map).sort((a, b) => b.data_date.localeCompare(a.data_date));
+  const todayIso = `${curY}-${String(curM).padStart(2, '0')}-${String(curD).padStart(2, '0')}`;
+  const todayEntry = map[todayIso] || fullList[0];
+
+  const monthPrefix = `${curY}-${String(curM).padStart(2, '0')}-`;
+  const monthRows = fullList.filter(r => r.data_date.startsWith(monthPrefix));
+  const validFresh = monthRows.map(r => Number(r.fresh_latex)).filter(v => isFinite(v) && v > 0);
+  const validFob = monthRows.map(r => Number(r.fob_bulk_usd)).filter(v => isFinite(v) && v > 0);
+
+  const avgFresh = validFresh.length
+    ? Number((validFresh.reduce((a, b) => a + b, 0) / validFresh.length).toFixed(2))
+    : tlaStore.average?.fresh_latex || null;
+  const avgFob = validFob.length
+    ? Number((validFob.reduce((a, b) => a + b, 0) / validFob.length).toFixed(2))
+    : tlaStore.average?.fob_bulk_usd || null;
+
+  return {
+    ...tlaStore,
+    latest: {
+      date_th: todayEntry ? todayEntry.date_th : formatThaiDateFull(todayIso),
+      fresh_latex: todayEntry ? todayEntry.fresh_latex : null,
+      fob_bulk_usd: todayEntry ? todayEntry.fob_bulk_usd : null
+    },
+    average: {
+      fresh_latex: avgFresh,
+      fob_bulk_usd: avgFob
+    },
+    daily_table: fullList
+  };
+}
+
 function loadTlaFile() {
   try {
     const tlaPath = path.join(__dirname, 'fallback-tla.json');
@@ -92,6 +211,7 @@ function loadTlaFile() {
       }
     }
   } catch (_) {}
+  syncTlaFromWeb();
 }
 
 function loadFallbackFile(key) {
@@ -265,9 +385,9 @@ app.get('/api/rubber/tra', (req, res) => {
   res.json(memoryStore.tra);
 });
 
-app.get('/api/rubber/tla', (req, res) => {
-  loadTlaFile();
-  res.json(tlaStore);
+app.get('/api/rubber/tla', async (req, res) => {
+  await syncTlaFromWeb();
+  res.json(buildDailyCalendarTla());
 });
 
 // Endpoint สำหรับกดทดสอบส่ง LINE หรือเรียกผ่าน GitHub Actions ตอน 08:00 น.
