@@ -325,14 +325,17 @@ async function getLatestPricesSummary() {
     rss3Info = { price: Number(memoryStore.tra?.local?.uss?.price || memoryStore.tra?.local?.rss3?.price || 82.65), date: todayIso, isToday: false };
   }
 
-  // ยางก้อนถ้วย
+  // ยางก้อนถ้วย (รองรับทั้ง Array [y,m,w,price] และ Object {value/price})
   let cupInfo = findLatestOrPrev(name => name.includes('ก้อน') || name.includes('ถ้วย'));
-  if (!cupInfo) {
+  if (!cupInfo || !isFinite(cupInfo.price) || cupInfo.price <= 0) {
     const cupRows = memoryStore.cup?.data || [];
-    if (cupRows.length) {
-      const sortedCup = [...cupRows].sort((a, b) => (Number(a.year_th) * 10000 + Number(a.month) * 100 + Number(a.week)) - (Number(b.year_th) * 10000 + Number(b.month) * 100 + Number(b.week)));
-      const lastWk = sortedCup[sortedCup.length - 1];
-      cupInfo = { price: Number(lastWk.value), date: rss3Info.date || todayIso, isToday: false };
+    const validCupPrices = cupRows.map(r => {
+      if (Array.isArray(r)) return Number(r[3] ?? r[1]);
+      return Number(r.value ?? r.price ?? r.day_price ?? r.week_price);
+    }).filter(v => isFinite(v) && v > 0);
+
+    if (validCupPrices.length) {
+      cupInfo = { price: validCupPrices[validCupPrices.length - 1], date: rss3Info.date || todayIso, isToday: false };
     } else {
       cupInfo = { price: 41.65, date: todayIso, isToday: false };
     }
