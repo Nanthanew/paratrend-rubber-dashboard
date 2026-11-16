@@ -22,7 +22,36 @@ const FALLBACK_FILES = {
   rss3: 'fallback-rss3.json'
 };
 
-// ข้อมูลสำรองในตัว (ป้องกันกรณีไฟล์ fallback-daily.json อ่านไม่ผ่าน)
+const TH_MONTHS_FULL = [
+  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+];
+
+const TH_MONTHS_SHORT = [
+  'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+  'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
+];
+
+function formatThaiDateFull(isoDate) {
+  const [y, m, d] = String(isoDate).split('-').map(Number);
+  if (!y || !m || !d) return isoDate;
+  return `${d} ${TH_MONTHS_FULL[m - 1]} ${y + 543}`;
+}
+
+function formatThaiDateShort(isoDate) {
+  const [y, m, d] = String(isoDate).split('-').map(Number);
+  if (!y || !m || !d) return isoDate;
+  return `${d} ${TH_MONTHS_SHORT[m - 1]} ${y + 543}`;
+}
+
+function getTodayIsoTH() {
+  const nowTH = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+  const y = nowTH.getFullYear();
+  const m = String(nowTH.getMonth() + 1).padStart(2, '0');
+  const d = String(nowTH.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 const BUILTIN_DAILY_RECORDS = [
   {"data_date":"2026-11-11","day":"11","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"ยางพาราแผ่นดิบ ชั้น 3","market_name":"ตลาดกลางยางพารา สงขลา","province":"สงขลา","day_price":81.95,"unit":"บาท/กก."},
   {"data_date":"2026-11-11","day":"11","month":"11","year_th":"2569","product_category":"ยางพารา","product_name":"ยางพาราแผ่นดิบ ชั้น 3","market_name":"ตลาดกลางยางพารา สุราษฎร์ธานี","province":"สุราษฎร์ธานี","day_price":82.65,"unit":"บาท/กก."},
@@ -64,7 +93,6 @@ const memoryStore = {
   }
 };
 
-// ข้อมูลตั้งต้น สมาคมน้ำยางข้นไทย (TLA - tlalatex.org/th/price)
 let tlaStore = {
   success: true,
   source: 'สมาคมน้ำยางข้นไทย (THE THAI LATEX ASSOCIATION)',
@@ -81,17 +109,6 @@ let tlaStore = {
     { data_date: '2026-11-01', date_th: '1 พฤศจิกายน 2569', fresh_latex: 86.00, fob_bulk_usd: 1900.00 }
   ]
 };
-
-const TH_MONTHS_FULL = [
-  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
-];
-
-function formatThaiDateFull(isoDate) {
-  const [y, m, d] = String(isoDate).split('-').map(Number);
-  if (!y || !m || !d) return isoDate;
-  return `${d} ${TH_MONTHS_FULL[m - 1]} ${y + 543}`;
-}
 
 async function syncTlaFromWeb() {
   try {
@@ -247,52 +264,110 @@ function preloadAllData() {
 }
 preloadAllData();
 
-// ----------------- ฟังก์ชันรวบรวมราคาล่าสุดและส่งแจ้งเตือนเข้า LINE -----------------
+// ----------------- ฟังก์ชันรวบรวมราคาล่าสุด (วันนี้ หรือ วันก่อนหน้า) และส่งเข้า LINE -----------------
 
-function getLatestPricesSummary() {
+async function getLatestPricesSummary() {
   preloadAllData();
+  await syncTlaFromWeb();
 
+  const todayIso = getTodayIsoTH();
   const dailyRows = memoryStore.daily?.data || BUILTIN_DAILY_RECORDS;
-  let latestLatex = null;
-  let latestRss3 = null;
-  let latestCup = null;
-
-  // ดึงราคาล่าสุดจากตารางรายวัน
   const sortedDaily = [...dailyRows].sort((a, b) => String(b.data_date).localeCompare(String(a.data_date)));
-  const latestDate = sortedDaily.length ? sortedDaily[0].data_date : null;
 
-  if (latestDate) {
-    const latexToday = sortedDaily.filter(r => r.data_date === latestDate && String(r.product_name).includes('น้ำยาง')).map(r => Number(r.day_price)).filter(Boolean);
-    const rss3Today = sortedDaily.filter(r => r.data_date === latestDate && (String(r.product_name).includes('แผ่น') || String(r.product_name).includes('RSS'))).map(r => Number(r.day_price)).filter(Boolean);
-    if (latexToday.length) latestLatex = (latexToday.reduce((a, b) => a + b, 0) / latexToday.length);
-    if (rss3Today.length) latestRss3 = (rss3Today.reduce((a, b) => a + b, 0) / rss3Today.length);
+  function findLatestOrPrev(matchFn) {
+    // 1. ค้นหาราคาของวันปัจจุบันก่อน
+    const todayMatches = sortedDaily
+      .filter(r => r.data_date === todayIso && matchFn(String(r.product_name || '')))
+      .map(r => Number(r.day_price))
+      .filter(v => isFinite(v) && v > 0);
+    if (todayMatches.length) {
+      return {
+        price: todayMatches.reduce((a, b) => a + b, 0) / todayMatches.length,
+        date: todayIso,
+        isToday: true
+      };
+    }
+
+    // 2. ถ้าวันนี้ไม่มีราคา ให้ดึงราคาของวันก่อนหน้าที่มีข้อมูลล่าสุด
+    const prevDates = [...new Set(sortedDaily.filter(r => matchFn(String(r.product_name || ''))).map(r => r.data_date))].sort((a, b) => b.localeCompare(a));
+    for (const d of prevDates) {
+      const prices = sortedDaily
+        .filter(r => r.data_date === d && matchFn(String(r.product_name || '')))
+        .map(r => Number(r.day_price))
+        .filter(v => isFinite(v) && v > 0);
+      if (prices.length) {
+        return {
+          price: prices.reduce((a, b) => a + b, 0) / prices.length,
+          date: d,
+          isToday: d === todayIso
+        };
+      }
+    }
+    return null;
   }
 
-  // Fallback จาก TRA / TLA หากไม่มีในรายวัน
-  if (!latestLatex) latestLatex = Number(tlaStore?.latest?.fresh_latex || memoryStore.tra?.local?.latex?.price || 77.00);
-  if (!latestRss3) latestRss3 = Number(memoryStore.tra?.local?.uss?.price || memoryStore.tra?.local?.rss3?.price || 82.65);
-
-  // ดึงราคายางก้อนถ้วยล่าสุด
-  const cupRows = memoryStore.cup?.data || [];
-  if (cupRows.length) {
-    const sortedCup = [...cupRows].sort((a, b) => (Number(a.year_th) * 10000 + Number(a.month) * 100 + Number(a.week)) - (Number(b.year_th) * 10000 + Number(b.month) * 100 + Number(b.week)));
-    latestCup = Number(sortedCup[sortedCup.length - 1].value);
+  // น้ำยางสด: เช็คจากตาราง TLA รายวัน และตาราง สศก. รายวัน
+  let latexInfo = findLatestOrPrev(name => name.includes('น้ำยาง'));
+  const tlaValid = (tlaStore.daily_table || []).filter(r => isFinite(Number(r.fresh_latex)) && Number(r.fresh_latex) > 0).sort((a, b) => b.data_date.localeCompare(a.data_date));
+  if (tlaValid.length) {
+    const topTla = tlaValid[0];
+    if (!latexInfo || topTla.data_date >= latexInfo.date) {
+      latexInfo = { price: Number(topTla.fresh_latex), date: topTla.data_date, isToday: topTla.data_date === todayIso };
+    }
   }
-  if (!latestCup) latestCup = 41.65;
+  if (!latexInfo) {
+    latexInfo = { price: Number(memoryStore.tra?.local?.latex?.price || 77.00), date: todayIso, isToday: false };
+  }
 
-  const dateStr = new Date().toLocaleDateString('th-TH', {
-    timeZone: 'Asia/Bangkok',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  });
+  // ยางแผ่นดิบชั้น 3
+  let rss3Info = findLatestOrPrev(name => name.includes('แผ่น') || name.includes('RSS') || name.includes('USS'));
+  if (!rss3Info) {
+    rss3Info = { price: Number(memoryStore.tra?.local?.uss?.price || memoryStore.tra?.local?.rss3?.price || 82.65), date: todayIso, isToday: false };
+  }
+
+  // ยางก้อนถ้วย
+  let cupInfo = findLatestOrPrev(name => name.includes('ก้อน') || name.includes('ถ้วย'));
+  if (!cupInfo) {
+    const cupRows = memoryStore.cup?.data || [];
+    if (cupRows.length) {
+      const sortedCup = [...cupRows].sort((a, b) => (Number(a.year_th) * 10000 + Number(a.month) * 100 + Number(a.week)) - (Number(b.year_th) * 10000 + Number(b.month) * 100 + Number(b.week)));
+      const lastWk = sortedCup[sortedCup.length - 1];
+      cupInfo = { price: Number(lastWk.value), date: rss3Info.date || todayIso, isToday: false };
+    } else {
+      cupInfo = { price: 41.65, date: todayIso, isToday: false };
+    }
+  }
+
+  const effectiveDate = [latexInfo.date, rss3Info.date].sort((a, b) => b.localeCompare(a))[0] || todayIso;
+  const isFallbackPrev = effectiveDate < todayIso;
 
   return {
-    dateStr,
-    latex: latestLatex.toFixed(2),
-    cup: latestCup.toFixed(2),
-    rss3: latestRss3.toFixed(2)
+    todayTh: formatThaiDateShort(todayIso),
+    effectiveDateTh: formatThaiDateShort(effectiveDate),
+    isFallbackPrev,
+    latex: latexInfo.price.toFixed(2),
+    cup: cupInfo.price.toFixed(2),
+    rss3: rss3Info.price.toFixed(2)
   };
+}
+
+function buildLineNotificationText(summary) {
+  const noteLine = summary.isFallbackPrev
+    ? `ℹ️ วันนี้ยังไม่มีประกาศราคาใหม่ (ใช้ราคาล่าสุดของ ${summary.effectiveDateTh})`
+    : `✅ อัปเดตราคาประจำวันล่าสุด`;
+
+  return [
+    `🌱 ParaTrend สรุปราคายางพารา`,
+    `📅 ประจำวันที่ ${summary.todayTh} (16:00 น.)`,
+    noteLine,
+    `━━━━━━━━━━━━━━`,
+    `💧 น้ำยางสด: ${summary.latex} บาท/กก.`,
+    `🥣 ยางก้อนถ้วย: ${summary.cup} บาท/กก.`,
+    `📜 ยางแผ่นดิบชั้น 3: ${summary.rss3} บาท/กก.`,
+    `━━━━━━━━━━━━━━`,
+    `📊 ดูกราฟพยากรณ์และคำนวณกำไร:`,
+    `https://paratrend-rubber.onrender.com`
+  ].join('\n');
 }
 
 async function sendDailyLineNotification() {
@@ -303,18 +378,8 @@ async function sendDailyLineNotification() {
     throw new Error('ยังไม่ได้ตั้งค่า LINE_CHANNEL_ACCESS_TOKEN ใน Environment Variables บน Render');
   }
 
-  const summary = getLatestPricesSummary();
-  const text = [
-    `🌱 ParaTrend สรุปราคายางพารา`,
-    `📅 ประจำวันที่ ${summary.dateStr} (08:00 น.)`,
-    `━━━━━━━━━━━━━━`,
-    `💧 น้ำยางสด: ${summary.latex} บาท/กก.`,
-    `🥣 ยางก้อนถ้วย: ${summary.cup} บาท/กก.`,
-    `📜 ยางแผ่นดิบชั้น 3: ${summary.rss3} บาท/กก.`,
-    `━━━━━━━━━━━━━━`,
-    `📊 ดูกราฟพยากรณ์และคำนวณกำไร:`,
-    `https://paratrend-rubber.onrender.com`
-  ].join('\n');
+  const summary = await getLatestPricesSummary();
+  const text = buildLineNotificationText(summary);
 
   const url = targetId
     ? 'https://api.line.me/v2/bot/message/push'
@@ -335,14 +400,14 @@ async function sendDailyLineNotification() {
   return { ok: true, summary, text };
 }
 
-// ตั้งเวลาส่งแจ้งเตือนอัตโนมัติทุกวัน เวลา 08:00 น. (ตามเวลาประเทศไทย)
-cron.schedule('0 8 * * *', async () => {
-  console.log('[Cron 08:00] กำลังส่งแจ้งเตือนราคายางพาราเข้า LINE...');
+// ตั้งเวลาส่งแจ้งเตือนอัตโนมัติทุกวัน เวลา 16:00 น. (ตามเวลาประเทศไทย)
+cron.schedule('0 16 * * *', async () => {
+  console.log('[Cron 16:00] กำลังส่งแจ้งเตือนราคายางพาราเข้า LINE...');
   try {
     await sendDailyLineNotification();
-    console.log('[Cron 08:00] ส่งแจ้งเตือนเข้า LINE สำเร็จ!');
+    console.log('[Cron 16:00] ส่งแจ้งเตือนเข้า LINE สำเร็จ!');
   } catch (err) {
-    console.error('[Cron 08:00] ส่งแจ้งเตือนเข้า LINE ไม่สำเร็จ:', err.message);
+    console.error('[Cron 16:00] ส่งแจ้งเตือนเข้า LINE ไม่สำเร็จ:', err.message);
   }
 }, {
   scheduled: true,
@@ -390,7 +455,7 @@ app.get('/api/rubber/tla', async (req, res) => {
   res.json(buildDailyCalendarTla());
 });
 
-// Endpoint สำหรับกดทดสอบส่ง LINE หรือเรียกผ่าน GitHub Actions ตอน 08:00 น.
+// Endpoint สำหรับกดทดสอบส่ง LINE หรือเรียกผ่าน GitHub Actions ตอน 16:00 น.
 app.all('/api/line/daily-notify', async (req, res) => {
   try {
     const result = await sendDailyLineNotification();
@@ -398,6 +463,34 @@ app.all('/api/line/daily-notify', async (req, res) => {
   } catch (err) {
     const apiErr = err.response?.data ? JSON.stringify(err.response.data) : err.message;
     res.status(500).json({ ok: false, error: apiErr });
+  }
+});
+
+// Webhook สำหรับตอบกลับอัตโนมัติเมื่อผู้ใช้พิมพ์ข้อความในแชท LINE (เช่น "ส่งมาใหม่", "ราคา")
+app.post('/api/line/webhook', async (req, res) => {
+  res.status(200).send('OK');
+  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN || LINE_ACCESS_TOKEN;
+  if (!token || !req.body || !Array.isArray(req.body.events)) return;
+
+  for (const ev of req.body.events) {
+    if (ev.type === 'message' && ev.message?.type === 'text' && ev.replyToken) {
+      try {
+        const summary = await getLatestPricesSummary();
+        const replyText = buildLineNotificationText(summary);
+        await axios.post('https://api.line.me/v2/bot/message/reply', {
+          replyToken: ev.replyToken,
+          messages: [{ type: 'text', text: replyText }]
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          timeout: 10000
+        });
+      } catch (e) {
+        console.error('[LINE Webhook Error]:', e.message);
+      }
+    }
   }
 });
 
